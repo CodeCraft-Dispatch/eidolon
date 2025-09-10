@@ -1,0 +1,14 @@
+{
+  "name": "eidolon",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "test": "cucumber-js --require-module ts-node/register --require features/steps/**/*.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@cucumber/cucumber": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.0.0"
+  }
+}
