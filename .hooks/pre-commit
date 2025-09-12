@@ -1,0 +1,27 @@
+#!/bin/sh
+# Pre-commit hook to run GitHub Actions workflow locally using act
+
+# Ensure act is installed
+if ! command -v act >/dev/null 2>&1; then
+	echo "Error: act tool not found. Please install act (https://github.com/nektos/act) to run CI locally."
+	exit 1
+fi
+
+# Ensure workflow file exists
+WORKFLOW_FILE=".github/workflows/ci.yml"
+if [ ! -f "$WORKFLOW_FILE" ]; then
+	echo "Error: GitHub Actions workflow file $WORKFLOW_FILE not found."
+	exit 1
+fi
+
+# Run the workflow using act
+echo "Running GitHub Actions workflow with act..."
+act push -W "$WORKFLOW_FILE"
+ACT_EXIT_CODE=$?
+if [ $ACT_EXIT_CODE -ne 0 ]; then
+	echo "GitHub Actions workflow failed. Commit aborted."
+	exit 1
+fi
+
+echo "pre-commit hook executed"
+exit 0
