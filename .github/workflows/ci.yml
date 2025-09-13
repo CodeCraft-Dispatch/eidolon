@@ -12,9 +12,22 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '22.x'
-      - name: Install dependencies
+
+      # Root
+      - name: Install root dependencies
         run: npm install
-      - name: Build
+      - name: Build root
         run: npm run build
-      - name: Test
+      - name: Test root
         run: npm test
+
+      # System
+      - name: Install system dependencies
+        run: npm install
+        working-directory: ./system
+      - name: Build system
+        run: npm run build
+        working-directory: ./system
+      - name: Test system
+        run: npm run test:unit
+        working-directory: ./system
