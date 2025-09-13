@@ -10,10 +10,8 @@ Given('the use of GitHub Actions', function () {
 });
 
 When('I push code to the repository', function () {
-  // Simulate a git push event
   // In real CI, this would trigger the workflow
-  // Here, we just assert that a push could occur
-  // (No-op for local test)
+  // No-op for local test
 });
 
 Then('the code is automatically built and tested', function () {
@@ -31,5 +29,30 @@ Then('the code is automatically built and tested', function () {
   }
   if (!hasTest) {
     throw new Error('ci.yml does not contain a test step running "npm test"');
+  }
+});
+
+Given('the use of vuejs', function () {
+  // Check for Vue.js presence (system/App.vue)
+  if (!fs.existsSync(path.resolve('system', 'src', 'App.vue'))) {
+    throw new Error('Vue.js app not found in system/src/App.vue');
+  }
+});
+
+Then('the system code is automatically built and tested', function () {
+  // Inspect the ci.yml file for system build and test steps
+  const ciPath = path.resolve('.github', 'workflows', 'ci.yml');
+  if (!fs.existsSync(ciPath)) {
+    throw new Error('ci.yml workflow file not found');
+  }
+  const ciContent = fs.readFileSync(ciPath, 'utf-8');
+  // Look for system build and test commands in the workflow
+  const hasSystemBuild = /working-directory:\s*\.\/system[\s\S]*run:\s*npm run build/.test(ciContent);
+  const hasSystemTest = /working-directory:\s*\.\/system[\s\S]*run:\s*npm run test:unit/.test(ciContent);
+  if (!hasSystemBuild) {
+    throw new Error('ci.yml does not contain a system build step running "npm run build" in system/');
+  }
+  if (!hasSystemTest) {
+    throw new Error('ci.yml does not contain a system test step running "npm run test:unit" in system/');
   }
 });
