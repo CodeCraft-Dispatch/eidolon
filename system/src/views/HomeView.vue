@@ -3,7 +3,13 @@ import TheWelcome from '../components/TheWelcome.vue'
 </script>
 
 <template>
-  <main>
+  <main class="desktop">
     <TheWelcome />
   </main>
 </template>
+
+<style scoped>
+.desktop {
+  
+}
+</style>
