@@ -15,7 +15,7 @@ jobs:
 
       # Root
       - name: Install root dependencies
-        run: npm install
+        run: npm ci
       - name: Build root
         run: npm run build
       - name: Test root
@@ -23,7 +23,7 @@ jobs:
 
       # System
       - name: Install system dependencies
-        run: npm install
+        run: npm ci
         working-directory: ./system
       - name: Build system
         run: npm run build
