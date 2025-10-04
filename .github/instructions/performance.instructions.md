@@ -1,4 +1,5 @@
 ---
+applyTo: "**/*.cs"
 description: Performance guidelines for C#, Disruptor .NET, Eventuous, Event-Sourcing, DDD, ATDD, TDD, and related tooling.
 ---
 

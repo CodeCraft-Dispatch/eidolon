@@ -7,7 +7,8 @@ description: Core instruction set
 - Follow the [Commit Message Guidelines](commit.instructions.md) for specific conventions and best practices.
 
 # 2. Coding Standards and Guidelines
-- Follow the [C# Coding Conventions](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/inside-a-program/coding-conventions) as a baseline.
+- Follow the [C# Coding Conventions](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/inside-a-program/coding-conventions) as a baseline for .NET.
+- Follow the [VueJS TypeScript Guide](https://vuejs.org/guide/typescript/overview.html) for VueJS TypeScript and prefer Composition and Single File Components.
 - Follow the [Standards](standards.instructions.md) for specific conventions and best practices.
 
 # 3. Performance Guidelines
