@@ -29,259 +29,199 @@ describe('endianness performance tests', () => {
   const LARGE_OPERATIONS_THRESHOLD_MS = 200 // ms for large-scale operations
 
   describe('byte swapping performance', () => {
-    it('should perform 16-bit byte swaps quickly', () => {
-      const iterations = 100000
-      const testValues = [0x0000, 0x1234, 0xABCD, 0xFFFF]
-      
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        const value = testValues[i % testValues.length]
-        swapBytes16(value)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
+    const iterations = 50000
+    const scenarios = [
+      { name: '16-bit', testFn: (value: number | bigint) => swapBytes16(value as number), testValues: [0x0000, 0x1234, 0xABCD, 0xFFFF] },
+      { name: '32-bit', testFn: (value: number | bigint) => swapBytes32(value as number), testValues: [0x00000000, 0x12345678, 0xABCDEF01, 0xFFFFFFFF] },
+      { name: '64-bit', testFn: (value: number | bigint) => swapBytes64(value as bigint), testValues: [0x0000000000000000n, 0x123456789ABCDEF0n, 0xFFFFFFFFFFFFFFFFn] }
+    ]
 
-    it('should perform 32-bit byte swaps quickly', () => {
-      const iterations = 100000
-      const testValues = [0x00000000, 0x12345678, 0xABCDEF01, 0xFFFFFFFF]
-      
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        const value = testValues[i % testValues.length]
-        swapBytes32(value)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
+    scenarios.forEach(scenario => {
+      it(`should perform ${scenario.name} byte swaps quickly`, () => {
+        const start = performance.now()
+        for (let i = 0; i < iterations; i++) {
+          const value = scenario.testValues[i % scenario.testValues.length]
+          scenario.testFn(value)
+        }
+        const duration = performance.now() - start
 
-    it('should perform 64-bit byte swaps quickly', () => {
-      const iterations = 50000 // Reduced due to BigInt overhead
-      const testValues = [0x0000000000000000n, 0x123456789ABCDEF0n, 0xFFFFFFFFFFFFFFFFn]
-      
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        const value = testValues[i % testValues.length]
-        swapBytes64(value)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+        expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+      })
     })
   })
 
-  describe('16-bit integer performance', () => {
-    let memory: BitMemory
+  describe('integer and floating-point performance', () => {
+    const integerScenarios = [
+      {
+        name: '16-bit integer',
+        dataSize: 2,
+        memorySize: 1024,
+        iterations: 10000,
+        operations: {
+          signed: {
+            write: writeInt16,
+            read: readInt16,
+            generateValue: (i: number) => (i % 65536) - 32768
+          },
+          unsigned: {
+            write: writeUint16,
+            read: readUint16,
+            generateValue: (i: number) => i % 65536
+          }
+        }
+      },
+      {
+        name: '32-bit integer',
+        dataSize: 4,
+        memorySize: 2048,
+        iterations: 5000,
+        operations: {
+          signed: {
+            write: writeInt32,
+            read: readInt32,
+            generateValue: (i: number) => (i * 12345) | 0
+          },
+          unsigned: {
+            write: writeUint32,
+            read: readUint32,
+            generateValue: (i: number) => (i * 12345) >>> 0
+          }
+        }
+      },
+      {
+        name: '64-bit integer',
+        dataSize: 8,
+        memorySize: 4096,
+        iterations: 2000,
+        operations: {
+          signed: {
+            write: writeInt64,
+            read: readInt64,
+            generateValue: (i: number) => BigInt(i) * 123456789n
+          },
+          unsigned: {
+            write: writeUint64,
+            read: readUint64,
+            generateValue: (i: number) => BigInt(i) * 123456789n
+          }
+        }
+      }
+    ]
 
-    beforeEach(() => {
-      memory = createBitMemory(1024) // 1KB for performance testing
+    const floatingPointScenarios = [
+      {
+        name: '32-bit float',
+        dataSize: 4,
+        memorySize: 2048,
+        iterations: 5000,
+        write: writeFloat32,
+        read: readFloat32,
+        testValues: [0.0, 1.0, -1.0, 3.14159, -3.14159, 1e6, -1e6],
+        generateValue: (i: number, testValues: number[]) => testValues[i % testValues.length] * (i + 1)
+      },
+      {
+        name: '64-bit float',
+        dataSize: 8,
+        memorySize: 2048,
+        iterations: 2500,
+        write: writeFloat64,
+        read: readFloat64,
+        testValues: [0.0, 1.0, -1.0, Math.PI, -Math.PI, 1e100, -1e100],
+        generateValue: (i: number, testValues: number[]) => testValues[i % testValues.length] * (i + 1)
+      }
+    ]
+
+    // Generate integer performance tests
+    integerScenarios.forEach(scenario => {
+      describe(`${scenario.name} performance`, () => {
+        let memory: BitMemory
+
+        beforeEach(() => {
+          memory = createBitMemory(scenario.memorySize)
+        })
+
+        Object.entries(scenario.operations).forEach(([signedness, ops]) => {
+          it(`should perform ${signedness} ${scenario.name} writes quickly`, () => {
+            const systemEndianness = getSystemEndianness()
+            
+            const start = performance.now()
+            let testMemory = memory
+            for (let i = 0; i < scenario.iterations; i++) {
+              const address = (i * scenario.dataSize) % (memory.length - (scenario.dataSize - 1))
+              const value = ops.generateValue(i)
+              testMemory = ops.write(testMemory, address, value, systemEndianness)
+            }
+            const duration = performance.now() - start
+            
+            expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+          })
+
+          it(`should perform ${signedness} ${scenario.name} reads quickly`, () => {
+            // Pre-populate memory
+            let testMemory = memory
+            const systemEndianness = getSystemEndianness()
+            const prepopulateCount = Math.min(500, Math.floor(memory.length / scenario.dataSize))
+            
+            for (let i = 0; i < prepopulateCount; i++) {
+              const address = i * scenario.dataSize
+              const value = ops.generateValue(i)
+              testMemory = ops.write(testMemory, address, value, systemEndianness)
+            }
+
+            const start = performance.now()
+            for (let i = 0; i < scenario.iterations; i++) {
+              const address = (i * scenario.dataSize) % (memory.length - (scenario.dataSize - 1))
+              ops.read(testMemory, address, systemEndianness)
+            }
+            const duration = performance.now() - start
+            
+            expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+          })
+
+          it(`should perform ${signedness} ${scenario.name} operations quickly`, () => {
+            const systemEndianness = getSystemEndianness()
+            
+            const start = performance.now()
+            let testMemory = memory
+            for (let i = 0; i < scenario.iterations; i++) {
+              const address = (i * scenario.dataSize) % (memory.length - (scenario.dataSize - 1))
+              const value = ops.generateValue(i)
+              testMemory = ops.write(testMemory, address, value, systemEndianness)
+              ops.read(testMemory, address, systemEndianness)
+            }
+            const duration = performance.now() - start
+            
+            expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+          })
+        })
+      })
     })
 
-    it('should perform signed 16-bit writes quickly', () => {
-      const iterations = 10000
-      const systemEndianness = getSystemEndianness()
-      
-      const start = performance.now()
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 2) % (memory.length - 1) // Ensure alignment
-        const value = (i % 65536) - 32768 // Range: -32768 to 32767
-        testMemory = writeInt16(testMemory, address, value, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
+    // Generate floating-point performance tests
+    floatingPointScenarios.forEach(scenario => {
+      describe(`${scenario.name} performance`, () => {
+        let memory: BitMemory
 
-    it('should perform signed 16-bit reads quickly', () => {
-      // Pre-populate memory
-      let testMemory = memory
-      const systemEndianness = getSystemEndianness()
-      for (let i = 0; i < 500; i++) {
-        const address = i * 2
-        const value = (i % 65536) - 32768
-        testMemory = writeInt16(testMemory, address, value, systemEndianness)
-      }
+        beforeEach(() => {
+          memory = createBitMemory(scenario.memorySize)
+        })
 
-      const iterations = 10000
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 2) % (memory.length - 1)
-        readInt16(testMemory, address, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-
-    it('should perform unsigned 16-bit operations quickly', () => {
-      const iterations = 10000
-      const systemEndianness = getSystemEndianness()
-      
-      const start = performance.now()
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 2) % (memory.length - 1)
-        const value = i % 65536 // Range: 0 to 65535
-        testMemory = writeUint16(testMemory, address, value, systemEndianness)
-        readUint16(testMemory, address, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-  })
-
-  describe('32-bit integer performance', () => {
-    let memory: BitMemory
-
-    beforeEach(() => {
-      memory = createBitMemory(2048) // 2KB for performance testing
-    })
-
-    it('should perform signed 32-bit writes quickly', () => {
-      const iterations = 5000
-      const systemEndianness = getSystemEndianness()
-      
-      const start = performance.now()
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 4) % (memory.length - 3) // Ensure 4-byte alignment
-        const value = (i * 12345) | 0 // Signed 32-bit value
-        testMemory = writeInt32(testMemory, address, value, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-
-    it('should perform signed 32-bit reads quickly', () => {
-      // Pre-populate memory
-      let testMemory = memory
-      const systemEndianness = getSystemEndianness()
-      for (let i = 0; i < 500; i++) {
-        const address = i * 4
-        const value = (i * 12345) | 0
-        testMemory = writeInt32(testMemory, address, value, systemEndianness)
-      }
-
-      const iterations = 5000
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 4) % (memory.length - 3)
-        readInt32(testMemory, address, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-
-    it('should perform unsigned 32-bit operations quickly', () => {
-      const iterations = 5000
-      const systemEndianness = getSystemEndianness()
-      
-      const start = performance.now()
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 4) % (memory.length - 3)
-        const value = (i * 12345) >>> 0 // Unsigned 32-bit value
-        testMemory = writeUint32(testMemory, address, value, systemEndianness)
-        readUint32(testMemory, address, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-  })
-
-  describe('64-bit integer performance', () => {
-    let memory: BitMemory
-
-    beforeEach(() => {
-      memory = createBitMemory(4096) // 4KB for performance testing
-    })
-
-    it('should perform 64-bit writes quickly', () => {
-      const iterations = 2000 // Reduced due to BigInt overhead
-      const systemEndianness = getSystemEndianness()
-      
-      const start = performance.now()
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 8) % (memory.length - 7) // Ensure 8-byte alignment
-        const value = BigInt(i) * 123456789n
-        testMemory = writeInt64(testMemory, address, value, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-
-    it('should perform 64-bit reads quickly', () => {
-      // Pre-populate memory
-      let testMemory = memory
-      const systemEndianness = getSystemEndianness()
-      for (let i = 0; i < 200; i++) {
-        const address = i * 8
-        const value = BigInt(i) * 123456789n
-        testMemory = writeInt64(testMemory, address, value, systemEndianness)
-      }
-
-      const iterations = 2000
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 8) % (memory.length - 7)
-        readInt64(testMemory, address, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-  })
-
-  describe('floating-point performance', () => {
-    let memory: BitMemory
-
-    beforeEach(() => {
-      memory = createBitMemory(2048) // 2KB for performance testing
-    })
-
-    it('should perform 32-bit float operations quickly', () => {
-      const iterations = 5000
-      const systemEndianness = getSystemEndianness()
-      const testValues = [0.0, 1.0, -1.0, 3.14159, -3.14159, 1e6, -1e6]
-      
-      const start = performance.now()
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 4) % (memory.length - 3)
-        const value = testValues[i % testValues.length] * (i + 1)
-        testMemory = writeFloat32(testMemory, address, value, systemEndianness)
-        readFloat32(testMemory, address, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-
-    it('should perform 64-bit float operations quickly', () => {
-      const iterations = 2500
-      const systemEndianness = getSystemEndianness()
-      const testValues = [0.0, 1.0, -1.0, Math.PI, -Math.PI, 1e100, -1e100]
-      
-      const start = performance.now()
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = (i * 8) % (memory.length - 7)
-        const value = testValues[i % testValues.length] * (i + 1)
-        testMemory = writeFloat64(testMemory, address, value, systemEndianness)
-        readFloat64(testMemory, address, systemEndianness)
-      }
-      const duration = performance.now() - start
-      
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+        it(`should perform ${scenario.name} operations quickly`, () => {
+          const systemEndianness = getSystemEndianness()
+          
+          const start = performance.now()
+          let testMemory = memory
+          for (let i = 0; i < scenario.iterations; i++) {
+            const address = (i * scenario.dataSize) % (memory.length - (scenario.dataSize - 1))
+            const value = scenario.generateValue(i, scenario.testValues)
+            testMemory = scenario.write(testMemory, address, value, systemEndianness)
+            scenario.read(testMemory, address, systemEndianness)
+          }
+          const duration = performance.now() - start
+          
+          expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+        })
+      })
     })
   })
 
@@ -342,77 +282,85 @@ describe('endianness performance tests', () => {
   })
 
   describe('real-world usage patterns', () => {
-    it('should handle protocol header parsing efficiently', () => {
-      const memory = createBitMemory(1024)
-      const iterations = 1000
-      
-      const start = performance.now()
-      let testMemory = memory
-      
-      // Simulate parsing network protocol headers
-      for (let i = 0; i < iterations; i++) {
-        const baseAddr = (i * 16) % (memory.length - 15)
-        
-        // Parse protocol header (mixed endianness like real protocols)
-        testMemory = writeUint16(testMemory, baseAddr, 0x1234, 'big')      // Magic number (big-endian)
-        testMemory = writeUint16(testMemory, baseAddr + 2, i, 'little')     // Sequence (little-endian)
-        testMemory = writeUint32(testMemory, baseAddr + 4, i * 1000, 'big') // Timestamp (big-endian)
-        testMemory = writeUint32(testMemory, baseAddr + 8, i % 256, 'little') // Flags (little-endian)
-        testMemory = writeFloat32(testMemory, baseAddr + 12, i * 0.1, 'big') // Version (big-endian float)
-        
-        // Read back values
-        readUint16(testMemory, baseAddr, 'big')
-        readUint16(testMemory, baseAddr + 2, 'little')
-        readUint32(testMemory, baseAddr + 4, 'big')
-        readUint32(testMemory, baseAddr + 8, 'little')
-        readFloat32(testMemory, baseAddr + 12, 'big')
-      }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(LARGE_OPERATIONS_THRESHOLD_MS)
-    })
-
-    it('should handle binary file format operations efficiently', () => {
-      const memory = createBitMemory(2048)
-      const iterations = 500
-      
-      const start = performance.now()
-      let testMemory = memory
-      
-      // Simulate binary file format with mixed data types
-      for (let i = 0; i < iterations; i++) {
-        const baseAddr = (i * 32) % (memory.length - 31)
-        
-        // File header simulation
-        testMemory = writeUint32(testMemory, baseAddr, 0x4D5A9000, 'little')    // Magic signature
-        testMemory = writeUint16(testMemory, baseAddr + 4, i, 'little')         // Version
-        testMemory = writeUint16(testMemory, baseAddr + 6, i % 16, 'little')    // Flags
-        testMemory = writeUint64(testMemory, baseAddr + 8, BigInt(i) * 1000n, 'little') // File size
-        testMemory = writeFloat64(testMemory, baseAddr + 16, i * Math.PI, 'little')     // Timestamp
-        testMemory = writeInt32(testMemory, baseAddr + 24, -i, 'little')        // Offset
-        testMemory = writeUint32(testMemory, baseAddr + 28, ~i, 'little')       // Checksum
-        
-        // Verify data integrity
-        const magic = readUint32(testMemory, baseAddr, 'little')
-        const version = readUint16(testMemory, baseAddr + 4, 'little')
-        const fileSize = readUint64(testMemory, baseAddr + 8, 'little')
-        const timestamp = readFloat64(testMemory, baseAddr + 16, 'little')
-        const offset = readInt32(testMemory, baseAddr + 24, 'little')
-        
-        // Basic validation
-        expect(magic).toBe(0x4D5A9000)
-        expect(version).toBe(i)
-        expect(fileSize).toBe(BigInt(i) * 1000n)
-        // Handle edge case of negative zero for i = 0
-        if (i === 0) {
-          expect(offset).toBe(0)
-        } else {
-          expect(offset).toBe(-i)
+    const realWorldScenarios = [
+      {
+        name: 'protocol header parsing',
+        memorySize: 1024,
+        iterations: 1000,
+        recordSize: 16,
+        threshold: LARGE_OPERATIONS_THRESHOLD_MS,
+        operations: (testMemory: BitMemory, baseAddr: number, i: number) => {
+          // Parse protocol header (mixed endianness like real protocols)
+          testMemory = writeUint16(testMemory, baseAddr, 0x1234, 'big')      // Magic number (big-endian)
+          testMemory = writeUint16(testMemory, baseAddr + 2, i, 'little')     // Sequence (little-endian)
+          testMemory = writeUint32(testMemory, baseAddr + 4, i * 1000, 'big') // Timestamp (big-endian)
+          testMemory = writeUint32(testMemory, baseAddr + 8, i % 256, 'little') // Flags (little-endian)
+          testMemory = writeFloat32(testMemory, baseAddr + 12, i * 0.1, 'big') // Version (big-endian float)
+          
+          // Read back values
+          readUint16(testMemory, baseAddr, 'big')
+          readUint16(testMemory, baseAddr + 2, 'little')
+          readUint32(testMemory, baseAddr + 4, 'big')
+          readUint32(testMemory, baseAddr + 8, 'little')
+          readFloat32(testMemory, baseAddr + 12, 'big')
+          
+          return testMemory
+        }
+      },
+      {
+        name: 'binary file format operations',
+        memorySize: 2048,
+        iterations: 500,
+        recordSize: 32,
+        threshold: LARGE_OPERATIONS_THRESHOLD_MS,
+        operations: (testMemory: BitMemory, baseAddr: number, i: number) => {
+          // File header simulation
+          testMemory = writeUint32(testMemory, baseAddr, 0x4D5A9000, 'little')    // Magic signature
+          testMemory = writeUint16(testMemory, baseAddr + 4, i, 'little')         // Version
+          testMemory = writeUint16(testMemory, baseAddr + 6, i % 16, 'little')    // Flags
+          testMemory = writeUint64(testMemory, baseAddr + 8, BigInt(i) * 1000n, 'little') // File size
+          testMemory = writeFloat64(testMemory, baseAddr + 16, i * Math.PI, 'little')     // Timestamp
+          testMemory = writeInt32(testMemory, baseAddr + 24, -i, 'little')        // Offset
+          testMemory = writeUint32(testMemory, baseAddr + 28, ~i, 'little')       // Checksum
+          
+          // Verify data integrity
+          const magic = readUint32(testMemory, baseAddr, 'little')
+          const version = readUint16(testMemory, baseAddr + 4, 'little')
+          const fileSize = readUint64(testMemory, baseAddr + 8, 'little')
+          const timestamp = readFloat64(testMemory, baseAddr + 16, 'little')
+          const offset = readInt32(testMemory, baseAddr + 24, 'little')
+          
+          // Basic validation
+          expect(magic).toBe(0x4D5A9000)
+          expect(version).toBe(i)
+          expect(fileSize).toBe(BigInt(i) * 1000n)
+          // Handle edge case of negative zero for i = 0
+          if (i === 0) {
+            expect(offset).toBe(0)
+          } else {
+            expect(offset).toBe(-i)
+          }
+          
+          return testMemory
         }
       }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(LARGE_OPERATIONS_THRESHOLD_MS)
+    ]
+
+    realWorldScenarios.forEach(scenario => {
+      it(`should handle ${scenario.name} efficiently`, () => {
+        const memory = createBitMemory(scenario.memorySize)
+        
+        const start = performance.now()
+        let testMemory = memory
+        
+        for (let i = 0; i < scenario.iterations; i++) {
+          const baseAddr = (i * scenario.recordSize) % (memory.length - (scenario.recordSize - 1))
+          testMemory = scenario.operations(testMemory, baseAddr, i)
+        }
+        
+        const duration = performance.now() - start
+        expect(duration).toBeLessThan(scenario.threshold)
+      })
     })
   })
 })

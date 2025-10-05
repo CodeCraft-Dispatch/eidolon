@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   type Bit,
   type BitMemory,
-  type ByteAddress,
   type BitPosition,
   createBitMemory,
   setBit,
@@ -18,83 +17,62 @@ import {
   memoryToBinary
 } from '../../binary'
 
-describe('binary performance tests', () => {
-  const PERFORMANCE_THRESHOLD_MS = 75 // ms threshold for most operations
-  const LARGE_OPERATIONS_THRESHOLD_MS = 150 // ms for large-scale operations
+import {
+  MemorySize,
+  IterationCount,
+  BytePattern,
+  HashConfiguration,
+  testConfig,
+  initializeMemory,
+  createOperations,
+  generateBatchOperations,
+  largeThreshold,
+  measurePerformance,
+  standardThreshold
+} from './binary.perf.spec-api'
 
+describe('binary performance tests', () => {
   describe('single operation performance', () => {
     let memory: BitMemory
 
     beforeEach(() => {
-      memory = createBitMemory(1024) // 1KB for performance testing
+      memory = initializeMemory.empty(testConfig.memorySize)
     })
 
-    it('should perform setBit operations quickly', () => {
-      const iterations = 10000
-      let testMemory = memory
-
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        const address = i % 1024
-        const bitPos = i % 8
-        testMemory = setBit(testMemory, address, bitPos as BitPosition, 1)
+    // Declarative test configuration for single operations
+    const singleOperationTests = [
+      {
+        name: 'setBit operations',
+        setup: () => memory,
+        operation: (mem: BitMemory) => createOperations.setBitLoop(mem, testConfig.defaultIterations, testConfig.memorySize)(),
+        validate: (result: unknown) => expect(result).toBeDefined()
+      },
+      {
+        name: 'getBit operations',
+        setup: () => initializeMemory.random(testConfig.memorySize),
+        operation: (mem: BitMemory) => createOperations.getBitLoop(mem, testConfig.defaultIterations, testConfig.memorySize)(),
+        validate: (result: unknown) => expect(result as number).toBeGreaterThan(0)
+      },
+      {
+        name: 'flipBit operations',
+        setup: () => memory,
+        operation: (mem: BitMemory) => createOperations.flipBitLoop(mem, testConfig.flipIterations, testConfig.memorySize)(),
+        validate: (result: unknown) => expect(result).toBeDefined()
+      },
+      {
+        name: 'setByte/getByte operations',
+        setup: () => memory,
+        operation: (mem: BitMemory) => createOperations.byteOperationsLoop(mem, testConfig.defaultIterations, testConfig.memorySize)(),
+        validate: (result: unknown) => expect(result).toBeDefined()
       }
+    ] as const
 
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-
-    it('should perform getBit operations quickly', () => {
-      // Pre-populate memory
-      let testMemory = memory
-      for (let i = 0; i < 1024; i++) {
-        testMemory = setByte(testMemory, i, Math.floor(Math.random() * 256))
-      }
-
-      const iterations = 10000
-      const start = performance.now()
-      
-      let totalBits = 0
-      for (let i = 0; i < iterations; i++) {
-        const address = i % 1024
-        const bitPos = i % 8
-        totalBits += getBit(testMemory, address, bitPos as BitPosition)
-      }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-      expect(totalBits).toBeGreaterThan(0) // Ensure we actually read bits
-    })
-
-    it('should perform flipBit operations quickly', () => {
-      const iterations = 5000
-      const start = performance.now()
-      
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = i % 1024
-        const bitPos = i % 8
-        testMemory = flipBit(testMemory, address, bitPos as BitPosition)
-      }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-    })
-
-    it('should perform setByte/getByte operations quickly', () => {
-      const iterations = 10000
-      const start = performance.now()
-      
-      let testMemory = memory
-      for (let i = 0; i < iterations; i++) {
-        const address = i % 1024
-        const value = i % 256
-        testMemory = setByte(testMemory, address, value)
-        getByte(testMemory, address)
-      }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
+    singleOperationTests.forEach(({ name, setup, operation, validate }) => {
+      it(`should perform ${name} quickly`, () => {
+        const testMemory = setup()
+        const { result } = measurePerformance(() => operation(testMemory))
+        validate(result)
+      })
     })
   })
 
@@ -102,187 +80,154 @@ describe('binary performance tests', () => {
     let memory: BitMemory
 
     beforeEach(() => {
-      memory = createBitMemory(1024)
+      memory = initializeMemory.empty(testConfig.memorySize)
     })
 
-    it('should perform setBits batch operations quickly', () => {
-      const operations = []
-      for (let i = 0; i < 1000; i++) {
-        operations.push({
-          address: i % 1024 as ByteAddress,
-          bitPosition: (i % 8) as BitPosition,
-          value: (i % 2) as Bit
-        })
+    const batchTests = [
+      {
+        name: 'setBits batch operations',
+        setup: () => memory,
+        operation: (mem: BitMemory) => {
+          const operations = generateBatchOperations.setBits(
+            testConfig.batchOperations,
+            testConfig.memorySize
+          )
+          return setBits(mem, operations)
+        },
+        validate: (result: unknown) => expect(countSetBits(result as BitMemory)).toBeGreaterThan(0)
+      },
+      {
+        name: 'getBits batch operations',
+        setup: () => initializeMemory.pattern(MemorySize.of(100), BytePattern.alternatingHigh()),
+        operation: (mem: BitMemory) => {
+          const positions = generateBatchOperations.getBits(testConfig.batchOperations, MemorySize.of(100))
+          return getBits(mem, positions)
+        },
+        validate: (result: unknown) => expect(result as Bit[]).toHaveLength(testConfig.batchOperations.value)
       }
+    ] as const
 
-      const start = performance.now()
-      const result = setBits(memory, operations)
-      const duration = performance.now() - start
-
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-      expect(countSetBits(result)).toBeGreaterThan(0)
-    })
-
-    it('should perform getBits batch operations quickly', () => {
-      // Pre-populate memory
-      let testMemory = memory
-      for (let i = 0; i < 100; i++) {
-        testMemory = setByte(testMemory, i, 170) // 0b10101010
-      }
-
-      const positions = []
-      for (let i = 0; i < 1000; i++) {
-        positions.push({
-          address: (i % 100) as ByteAddress,
-          bitPosition: (i % 8) as BitPosition
-        })
-      }
-
-      const start = performance.now()
-      const result = getBits(testMemory, positions)
-      const duration = performance.now() - start
-
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-      expect(result).toHaveLength(1000)
+    batchTests.forEach(({ name, setup, operation, validate }) => {
+      it(`should perform ${name} quickly`, () => {
+        const testMemory = setup?.() ?? memory
+        const { result } = measurePerformance(() => operation(testMemory))
+        validate(result)
+      })
     })
   })
 
   describe('memory analysis performance', () => {
-    const memorySizes = [64, 256, 1024, 4096] // Various sizes
-
-    memorySizes.forEach(size => {
-      describe(`${size} bytes memory`, () => {
-        let memory: BitMemory
-
-        beforeEach(() => {
-          memory = createBitMemory(size)
-        })
-
-        it('should count set bits quickly', () => {
-          // Pre-populate with random data
-          let testMemory = memory
-          for (let i = 0; i < size; i++) {
-            testMemory = setByte(testMemory, i, Math.floor(Math.random() * 256))
-          }
-
-          const start = performance.now()
-          const count = countSetBits(testMemory)
-          const duration = performance.now() - start
-
-          const threshold = size > 1024 ? LARGE_OPERATIONS_THRESHOLD_MS : PERFORMANCE_THRESHOLD_MS
-          expect(duration).toBeLessThan(threshold)
+    const analysisTests = [
+      {
+        name: 'count set bits',
+        memoryInit: initializeMemory.random,
+        operation: countSetBits,
+        validate: (result: unknown, size: MemorySize) => {
+          const count = result as number
           expect(count).toBeGreaterThanOrEqual(0)
-          expect(count).toBeLessThanOrEqual(size * 8)
-        })
+          expect(count).toBeLessThanOrEqual(size.bits)
+        }
+      },
+      {
+        name: 'find first set bit',
+        memoryInit: initializeMemory.sparse,
+        operation: findFirstSetBit,
+        validate: (result: unknown, size: MemorySize) => {
+          const expectedAddress = Math.floor(size.value * 0.8)
+          expect(result).toEqual({ address: expectedAddress, bitPosition: 3 })
+        }
+      }
+    ] as const
 
-        it('should find first set bit quickly', () => {
-          // Create sparse memory with set bit near the end
-          let testMemory = memory
-          const setAddress = Math.floor(size * 0.8) // Set bit near end
-          testMemory = setBit(testMemory, setAddress, 3, 1)
-
-          const start = performance.now()
-          const result = findFirstSetBit(testMemory)
-          const duration = performance.now() - start
-
-          const threshold = size > 1024 ? LARGE_OPERATIONS_THRESHOLD_MS : PERFORMANCE_THRESHOLD_MS
-          expect(duration).toBeLessThan(threshold)
-          expect(result).toEqual({ address: setAddress, bitPosition: 3 })
+    testConfig.memorySizes.forEach(size => {
+      describe(`${size.value} bytes memory`, () => {
+        analysisTests.forEach(({ name, memoryInit, operation, validate }) => {
+          it(`should ${name} quickly`, () => {
+            const memory = memoryInit(size)
+            const threshold = size.value > 1024 ? largeThreshold : standardThreshold
+            const { result } = measurePerformance(() => operation(memory), threshold)
+            validate(result, size)
+          })
         })
       })
     })
   })
 
   describe('formatting performance', () => {
-    const memorySizes = [16, 64, 256, 1024]
+    const formatTests = [
+      {
+        name: 'format to hex',
+        operation: memoryToHex,
+        expectedLength: (size: MemorySize) => size.value * 3 - 1 // 2 chars per byte + spaces
+      },
+      {
+        name: 'format to binary',
+        operation: memoryToBinary,
+        expectedLength: (size: MemorySize) => size.value * 9 - 1 // 8 chars per byte + spaces
+      }
+    ] as const
 
-    memorySizes.forEach(size => {
-      describe(`${size} bytes memory formatting`, () => {
+    testConfig.formatSizes.forEach(size => {
+      describe(`${size.value} bytes memory formatting`, () => {
         let memory: BitMemory
 
         beforeEach(() => {
-          memory = createBitMemory(size)
-          // Pre-populate with pattern
-          for (let i = 0; i < size; i++) {
+          memory = createBitMemory(size.value)
+          for (let i = 0; i < size.value; i++) {
             memory = setByte(memory, i, i % 256)
           }
         })
 
-        it('should format to hex quickly', () => {
-          const start = performance.now()
-          const hex = memoryToHex(memory)
-          const duration = performance.now() - start
-
-          const threshold = size > 256 ? LARGE_OPERATIONS_THRESHOLD_MS : PERFORMANCE_THRESHOLD_MS
-          expect(duration).toBeLessThan(threshold)
-          expect(hex).toHaveLength(size * 3 - 1) // 2 chars per byte + spaces
-        })
-
-        it('should format to binary quickly', () => {
-          const start = performance.now()
-          const binary = memoryToBinary(memory)
-          const duration = performance.now() - start
-
-          const threshold = size > 256 ? LARGE_OPERATIONS_THRESHOLD_MS : PERFORMANCE_THRESHOLD_MS
-          expect(duration).toBeLessThan(threshold)
-          expect(binary).toHaveLength(size * 9 - 1) // 8 chars per byte + spaces
+        formatTests.forEach(({ name, operation, expectedLength }) => {
+          it(`should ${name} quickly`, () => {
+            const threshold = size.value > 256 ? largeThreshold : standardThreshold
+            const { result } = measurePerformance(() => operation(memory), threshold)
+            expect(result).toHaveLength(expectedLength(size))
+          })
         })
       })
     })
   })
 
   describe('memory size scaling performance', () => {
-    const sizes = [1, 4, 16, 64, 256, 1024, 2048, 4096]
-
     it('should maintain performance for single bit operations', () => {
-      const results: Array<{ size: number; duration: number }> = []
+      const results = testConfig.scalingSizes.map(size => {
+        const memory = createBitMemory(size.value)
+        const iterations = IterationCount.scaling()
 
-      sizes.forEach(size => {
-        const memory = createBitMemory(size)
-        const iterations = 1000
+        const { duration } = measurePerformance(() => {
+          let testMemory = memory
+          for (let i = 0; i < iterations.value; i++) {
+            const address = i % size.value
+            const bitPos = i % 8
+            testMemory = setBit(testMemory, address, bitPos as BitPosition, 1)
+            getBit(testMemory, address, bitPos as BitPosition)
+          }
+          return testMemory
+        }, largeThreshold)
 
-        const start = performance.now()
-        let testMemory = memory
-        for (let i = 0; i < iterations; i++) {
-          const address = i % size
-          const bitPos = i % 8
-          testMemory = setBit(testMemory, address, bitPos as BitPosition, 1)
-          getBit(testMemory, address, bitPos as BitPosition)
-        }
-        const duration = performance.now() - start
-
-        results.push({ size, duration })
+        return { size: size.value, duration }
       })
 
-      // Verify that performance doesn't degrade significantly with size
-      // for individual operations
+      // Verify that performance doesn't degrade significantly with size for individual operations
       const smallMemoryTime = results[0].duration
       const largeMemoryTime = results[results.length - 1].duration
-      const expectedTime = smallMemoryTime * (sizes.length * 2) + 2
+      const expectedTime = smallMemoryTime * (testConfig.scalingSizes.length * 2) + 2
       expect(largeMemoryTime).toBeLessThan(expectedTime)
     })
 
     it('should show linear scaling for memory-wide operations', () => {
-      const results: Array<{ size: number; duration: number }> = []
+      const results = testConfig.scalingSizes.map(size => {
+        const memory = initializeMemory.pattern(size, BytePattern.alternatingHigh())
 
-      sizes.forEach(size => {
-        const memory = createBitMemory(size)
-        let testMemory = memory
-        
-        // Fill memory with pattern
-        for (let i = 0; i < size; i++) {
-          testMemory = setByte(testMemory, i, 170) // 0b10101010
-        }
+        const { duration } = measurePerformance(() => {
+          return countSetBits(memory) // O(n) operation
+        }, largeThreshold)
 
-        const start = performance.now()
-        countSetBits(testMemory) // O(n) operation
-        const duration = performance.now() - start
-
-        results.push({ size, duration })
+        return { size: size.value, duration }
       })
 
       // Verify linear scaling for O(n) operations
-      // Each result should be reasonable and roughly proportional to size
       results.forEach(({ size, duration }) => {
         const timePerByte = duration / size
         expect(timePerByte).toBeLessThan(1) // Less than 1ms per byte
@@ -293,129 +238,129 @@ describe('binary performance tests', () => {
   describe('stress testing', () => {
     it('should handle rapid successive operations', () => {
       const memory = createBitMemory(256)
-      const operations = 50000
+      const operations = testConfig.stressOperations
 
-      const start = performance.now()
-      let testMemory = memory
-      
-      for (let i = 0; i < operations; i++) {
-        const address = i % 256
-        const bitPos = i % 8
-        const value = i % 2
-        
-        testMemory = setBit(testMemory, address, bitPos as BitPosition, value as Bit)
-        if (i % 10 === 0) {
-          testMemory = flipBit(testMemory, address, bitPos as BitPosition)
+      const { result } = measurePerformance(() => {
+        let testMemory = memory
+
+        for (let i = 0; i < operations.value; i++) {
+          const address = i % 256
+          const bitPos = i % 8
+          const value = i % 2
+
+          testMemory = setBit(testMemory, address, bitPos as BitPosition, value as Bit)
+          if (i % 10 === 0) {
+            testMemory = flipBit(testMemory, address, bitPos as BitPosition)
+          }
+          if (i % 100 === 0) {
+            testMemory = setByte(testMemory, address, i % 256)
+          }
         }
-        if (i % 100 === 0) {
-          testMemory = setByte(testMemory, address, i % 256)
-        }
-      }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(LARGE_OPERATIONS_THRESHOLD_MS)
+
+        return testMemory
+      }, largeThreshold)
+
+      expect(result).toBeDefined()
     })
 
     it('should handle memory reallocation patterns efficiently', () => {
-      const iterations = 1000
-      const start = performance.now()
+      const iterations = IterationCount.scaling()
 
-      for (let i = 1; i <= iterations; i++) {
-        const memory = createBitMemory(i % 100 + 1) // Varying sizes 1-100
-        let testMemory = setBit(memory, 0, 0, 1)
-        testMemory = flipBit(testMemory, 0, 0)
-        const result = getBit(testMemory, 0, 0)
-        expect(result).toBe(0)
-      }
+      const { result } = measurePerformance(() => {
+        const results = []
+        for (let i = 1; i <= iterations.value; i++) {
+          const memory = createBitMemory(i % 100 + 1) // Varying sizes 1-100
+          let testMemory = setBit(memory, 0, 0, 1)
+          testMemory = flipBit(testMemory, 0, 0)
+          const result = getBit(testMemory, 0, 0)
+          results.push(result)
+        }
+        return results
+      }, largeThreshold)
 
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(LARGE_OPERATIONS_THRESHOLD_MS)
+      expect(result).toHaveLength(iterations.value)
+      result.forEach((bit: number) => expect(bit as Bit).toBe(0))
     })
   })
 
-  describe('real-world usage patterns', () => {
-    it('should handle bloom filter-like operations efficiently', () => {
-      const memory = createBitMemory(1024) // 8KB bloom filter
-      const items = 1000
-      
-      const start = performance.now()
+  // Real-world operation patterns
+  const realWorldOperations = {
+    bloomFilter: (memory: BitMemory, items: IterationCount) => () => {
+      const hashConfig = HashConfiguration.bloomFilter()
       let testMemory = memory
-      
+
       // Simulate adding items to bloom filter
-      for (let i = 0; i < items; i++) {
-        const hash1 = (i * 17) % 8192 // Bit position
-        const hash2 = (i * 31) % 8192
-        const hash3 = (i * 47) % 8192
-        
-        const addr1 = Math.floor(hash1 / 8)
-        const bit1 = hash1 % 8
-        const addr2 = Math.floor(hash2 / 8)
-        const bit2 = hash2 % 8
-        const addr3 = Math.floor(hash3 / 8)
-        const bit3 = hash3 % 8
-        
-        testMemory = setBit(testMemory, addr1, bit1 as BitPosition, 1)
-        testMemory = setBit(testMemory, addr2, bit2 as BitPosition, 1)
-        testMemory = setBit(testMemory, addr3, bit3 as BitPosition, 1)
+      for (let i = 0; i < items.value; i++) {
+        const hashes = hashConfig.calculateHashes(i)
+
+        hashes.forEach(hash => {
+          const addr = Math.floor(hash / 8)
+          const bit = hash % 8
+          testMemory = setBit(testMemory, addr, bit as BitPosition, 1)
+        })
       }
-      
+
       // Simulate checking items
       let falsePositives = 0
-      for (let i = items; i < items + 100; i++) {
-        const hash1 = (i * 17) % 8192
-        const hash2 = (i * 31) % 8192
-        const hash3 = (i * 47) % 8192
-        
-        const addr1 = Math.floor(hash1 / 8)
-        const bit1 = hash1 % 8
-        const addr2 = Math.floor(hash2 / 8)
-        const bit2 = hash2 % 8
-        const addr3 = Math.floor(hash3 / 8)
-        const bit3 = hash3 % 8
-        
-        if (getBit(testMemory, addr1, bit1 as BitPosition) &&
-            getBit(testMemory, addr2, bit2 as BitPosition) &&
-            getBit(testMemory, addr3, bit3 as BitPosition)) {
-          falsePositives++
-        }
-      }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(LARGE_OPERATIONS_THRESHOLD_MS)
-      expect(falsePositives).toBeGreaterThanOrEqual(0) // Some false positives expected
-    })
+      for (let i = items.value; i < items.value + 100; i++) {
+        const hashes = hashConfig.calculateHashes(i)
 
-    it('should handle bit vector operations efficiently', () => {
-      const size = 512
-      const memory = createBitMemory(size)
-      
-      const start = performance.now()
-      let testMemory = memory
-      
-      // Set alternating patterns
-      for (let addr = 0; addr < size; addr++) {
-        if (addr % 2 === 0) {
-          testMemory = setByte(testMemory, addr, 170) // 0b10101010
-        } else {
-          testMemory = setByte(testMemory, addr, 85)  // 0b01010101
-        }
+        const allBitsSet = hashes.every(hash => {
+          const addr = Math.floor(hash / 8)
+          const bit = hash % 8
+          return getBit(testMemory, addr, bit as BitPosition)
+        })
+
+        if (allBitsSet) falsePositives++
       }
-      
-      // Count set bits
+
+      return { memory: testMemory, falsePositives }
+    },
+
+    bitVector: (size: MemorySize) => () => {
+      let testMemory = initializeMemory.alternating(size)
+
       const setBitCount = countSetBits(testMemory)
-      
-      // Find patterns
-      let patternMatches = 0
-      for (let addr = 0; addr < size - 1; addr += 2) {
-        if (getByte(testMemory, addr) === 170 && getByte(testMemory, addr + 1) === 85) {
-          patternMatches++
+
+      const patternMatches = Array.from({ length: Math.floor(size.value / 2) }, (_, i) => i * 2)
+        .filter(addr => addr < size.value - 1)
+        .filter(addr => getByte(testMemory, addr) === BytePattern.alternatingHigh().byte &&
+          getByte(testMemory, addr + 1) === BytePattern.alternatingLow().byte)
+        .length
+
+      return { memory: testMemory, setBitCount, patternMatches }
+    }
+  } as const
+
+  describe('real-world usage patterns', () => {
+    const realWorldTests = [
+      {
+        name: 'bloom filter-like operations',
+        operation: () => {
+          const memory = createBitMemory(1024)
+          return realWorldOperations.bloomFilter(memory, IterationCount.scaling())()
+        },
+        validate: (result: unknown) => {
+          const { falsePositives } = result as { memory: BitMemory; falsePositives: number }
+          expect(falsePositives).toBeGreaterThanOrEqual(0)
+        }
+      },
+      {
+        name: 'bit vector operations',
+        operation: () => realWorldOperations.bitVector(MemorySize.of(512))(),
+        validate: (result: unknown) => {
+          const { setBitCount, patternMatches } = result as { memory: BitMemory; setBitCount: number; patternMatches: number }
+          expect(setBitCount).toBe(512 * 4) // Half the bits are set
+          expect(patternMatches).toBeGreaterThan(0)
         }
       }
-      
-      const duration = performance.now() - start
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLD_MS)
-      expect(setBitCount).toBe(size * 4) // Half the bits are set
-      expect(patternMatches).toBeGreaterThan(0)
+    ] as const
+
+    realWorldTests.forEach(({ name, operation, validate }) => {
+      it(`should handle ${name} efficiently`, () => {
+        const { result } = measurePerformance(operation as () => unknown, largeThreshold)
+        validate(result)
+      })
     })
   })
 })

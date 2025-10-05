@@ -23,6 +23,7 @@ import {
   memoryToHex,
   memoryToBinary,
   isValidBitPosition,
+  isInvalidBitPosition,
   isValidAddress,
   isValidBit
 } from '../../binary'
@@ -277,6 +278,83 @@ describe('binary', () => {
       expect(isValidBitPosition(8)).toBe(false)
       expect(isValidBitPosition(-1)).toBe(false)
       expect(isValidBitPosition(3.5)).toBe(false)
+    })
+  })
+
+  describe('isInvalidBitPosition', () => {
+    describe('bit position validation scenarios', () => {
+      const scenarios = [
+        {
+          name: 'valid integer positions within range',
+          values: [0, 1, 2, 3, 4, 5, 6, 7],
+          expected: false
+        },
+        {
+          name: 'boundary values (exact boundaries, valid)',
+          values: [0, 7],
+          expected: false
+        },
+        {
+          name: 'out of range (below minimum)',
+          values: [-1, -5, -100],
+          expected: true
+        },
+        {
+          name: 'out of range (above maximum)',
+          values: [8, 9, 15, 100],
+          expected: true
+        },
+        {
+          name: 'non-integers within valid range',
+          values: [0.5, 3.14, 6.99, 7.1],
+          expected: true
+        },
+        {
+          name: 'non-integers outside valid range',
+          values: [-1.5, 8.5, 10.75],
+          expected: true
+        },
+        {
+          name: 'special numeric values',
+          values: [NaN, Infinity, -Infinity],
+          expected: true
+        },
+        {
+          name: 'boundary values (just below/above)',
+          values: [-0.1, 7.1],
+          expected: true
+        },
+        {
+          name: 'very large and very small numbers',
+          values: [Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, 1e10, -1e10],
+          expected: true
+        }
+      ]
+
+      scenarios.forEach(({ name, values, expected }) => {
+        it(`should return ${expected} for ${name}`, () => {
+          values.forEach(value => {
+            expect(isInvalidBitPosition(value)).toBe(expected)
+          })
+        })
+      })
+    })
+
+    describe('type compatibility', () => {
+      it('should be inverse of isValidBitPosition for integers', () => {
+        const testValues = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        testValues.forEach(value => {
+          expect(isInvalidBitPosition(value)).toBe(!isValidBitPosition(value))
+        })
+      })
+
+      it('should return true for non-integer values', () => {
+        const nonIntegerValues = [0.1, 0.9, 1.5, 3.14, 6.9, 7.1]
+        nonIntegerValues.forEach(value => {
+          expect(isInvalidBitPosition(value)).toBe(true)
+          expect(isValidBitPosition(value)).toBe(false)
+        })
+      })
     })
   })
 
