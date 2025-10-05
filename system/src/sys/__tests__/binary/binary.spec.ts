@@ -25,7 +25,7 @@ import {
   isValidBitPosition,
   isValidAddress,
   isValidBit
-} from '../binary'
+} from '../../binary'
 
 describe('binary', () => {
   let memory: BitMemory

@@ -15,7 +15,7 @@ import {
   memoryToHex,
   memoryToBinary,
   isValidAddress
-} from '../binary'
+} from '../../binary'
 
 describe('binary memory sizes and extreme cases', () => {
   describe('minimal memory (1 byte)', () => {

@@ -16,7 +16,7 @@ import {
   findFirstSetBit,
   memoryToHex,
   memoryToBinary
-} from '../binary'
+} from '../../binary'
 
 describe('binary performance tests', () => {
   const PERFORMANCE_THRESHOLD_MS = 250 // 250ms threshold for most operations

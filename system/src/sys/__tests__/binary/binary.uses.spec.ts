@@ -16,7 +16,7 @@ import {
   setMemoryBits,
   countSetBits,
   memoryToHex
-} from '../binary'
+} from '../../binary'
 
 describe('binary usage scenarios', () => {
   describe('status flags and system state', () => {
