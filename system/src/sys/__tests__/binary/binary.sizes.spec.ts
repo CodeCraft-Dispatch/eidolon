@@ -173,7 +173,7 @@ describe('binary memory sizes and extreme cases', () => {
   })
 
   describe('power-of-2 memory sizes', () => {
-    const powerOf2Sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    const powerOf2Sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
 
     powerOf2Sizes.forEach(size => {
       it(`should handle ${size} byte memory correctly`, () => {
@@ -228,7 +228,7 @@ describe('binary memory sizes and extreme cases', () => {
   })
 
   describe('boundary conditions', () => {
-    it('should handle maximum safe integer size', () => {
+    it('should handle maximum safe integer size (avoiding excess memory use)', () => {
       // Test with a reasonably large size that won't cause memory issues
       const largeSize = 10000 // 10KB
       const memory = createBitMemory(largeSize)

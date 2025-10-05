@@ -25,8 +25,8 @@ import {
 import { type BitMemory, createBitMemory } from '../../binary'
 
 describe('endianness performance tests', () => {
-  const PERFORMANCE_THRESHOLD_MS = 250 // 250ms threshold for most operations
-  const LARGE_OPERATIONS_THRESHOLD_MS = 500 // 500ms for large-scale operations
+  const PERFORMANCE_THRESHOLD_MS = 150 // ms for most operations
+  const LARGE_OPERATIONS_THRESHOLD_MS = 200 // ms for large-scale operations
 
   describe('byte swapping performance', () => {
     it('should perform 16-bit byte swaps quickly', () => {

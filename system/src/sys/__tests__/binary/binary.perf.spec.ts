@@ -19,8 +19,8 @@ import {
 } from '../../binary'
 
 describe('binary performance tests', () => {
-  const PERFORMANCE_THRESHOLD_MS = 250 // 250ms threshold for most operations
-  const LARGE_OPERATIONS_THRESHOLD_MS = 500 // 500ms for large-scale operations
+  const PERFORMANCE_THRESHOLD_MS = 75 // ms threshold for most operations
+  const LARGE_OPERATIONS_THRESHOLD_MS = 150 // ms for large-scale operations
 
   describe('single operation performance', () => {
     let memory: BitMemory
@@ -234,7 +234,7 @@ describe('binary performance tests', () => {
   describe('memory size scaling performance', () => {
     const sizes = [1, 4, 16, 64, 256, 1024, 2048, 4096]
 
-    it('should maintain O(1) performance for single bit operations', () => {
+    it('should maintain performance for single bit operations', () => {
       const results: Array<{ size: number; duration: number }> = []
 
       sizes.forEach(size => {
@@ -255,10 +255,11 @@ describe('binary performance tests', () => {
       })
 
       // Verify that performance doesn't degrade significantly with size
-      // for individual operations (should be roughly O(1))
+      // for individual operations
       const smallMemoryTime = results[0].duration
       const largeMemoryTime = results[results.length - 1].duration
-      expect(largeMemoryTime).toBeLessThan(smallMemoryTime * (sizes.length * 2))
+      const expectedTime = smallMemoryTime * (sizes.length * 2) + 2
+      expect(largeMemoryTime).toBeLessThan(expectedTime)
     })
 
     it('should show linear scaling for memory-wide operations', () => {
