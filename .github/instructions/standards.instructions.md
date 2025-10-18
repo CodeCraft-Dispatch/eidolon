@@ -18,7 +18,7 @@ These guidelines inform suggestions and auto-completions for all files.
 ## 3. Immutability & State Management
 - Define events as immutable record types.
 - In state transitions, apply events to produce new state objects; avoid in-place mutations.
-- Use Disruptor .NET to enqueue commands and dispatch events asynchronously.
+- Use a Ring Buffer to enqueue commands and dispatch events asynchronously.
 - Use **Event Sourcing** and **Domain-Driven Design** principles, practices, patterns, and libraries like Eventuous.
 - Leverage abstraction to separate any library use from system code.
 - Employ the **Bulkhead** pattern: isolate command handlers into independent lanes.

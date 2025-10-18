@@ -6,7 +6,7 @@ description: Eidolon AI Coding Agent Instructions
 
 ## Overview
 
-Eidolon is a C#/.NET solution built around Domain-Driven Design (DDD), Event Sourcing, CQRS, and high-performance asynchronous processing using Disruptor .NET and Eventuous. The architecture is designed for composability, resilience, and observability.
+Eidolon is a creative solution built around Domain-Driven Design (DDD), Event Sourcing, CQRS, and high-performance asynchronous processing using concepts from Disruptor .NET and Eventuous but in TypeScript. The architecture is designed for composability, resilience, and observability.
 
 ## Key Architectural Patterns
 
@@ -15,27 +15,20 @@ Eidolon is a C#/.NET solution built around Domain-Driven Design (DDD), Event Sou
 - **CQRS:** Separate read and write models. Commands validate intent and publish events; events represent facts and trigger state changes or side effects.
 - **Disruptor .NET:** Use ring buffers for async command/event dispatch. Handlers must be allocation-free and lock-free for performance.
 - **Bulkhead Pattern:** Isolate command handlers into independent lanes for fault tolerance.
+- **Ruthlessly Eliminate Duplication:** Code duplication is not acceptable.
 
-## Project Structure
+## Structure
 
-- Solution files are in [`src/Eidolon.sln`](../src/Eidolon.sln).
-- Domain folders group related features.
+- The language of the domain drive the structure of the system.
 - Each public type is in its own file; file name matches type name.
 
 ## Coding Conventions
 
-- **Naming:** PascalCase for public types/methods, camelCase for locals/fields/params.
+- **Naming:** Always use the idioms of the programming language being used.
 - **Immutability:** Events are immutable records. Prefer readonly fields and immutable collections.
 - **Error Handling:** Catch exceptions at command boundaries, publish failure events, never suppress errors.
 - **Async:** Use async/await for I/O. Queue long-running tasks off the main ring buffer.
 - **Observability:** Emit structured logs for commands/events. Tag logs with correlation IDs.
-
-## Build, Test, and Debug
-
-- Build and run using Visual Studio or `dotnet` CLI.
-- Use `xUnit` for unit tests. Test projects follow domain boundaries.
-- Performance-critical code should be benchmarked with `BenchmarkDotNet`.
-- Use `dotnet list package --vulnerable` to check dependencies.
 
 ## Security
 

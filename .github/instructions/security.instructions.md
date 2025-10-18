@@ -1,73 +1,222 @@
 ---
-description: Security Guidelines for C#, Disruptor .NET, Eventuous, DDD, ATDD, TDD and related tooling.
+applyTo: '**/*.ts,**/*.js,**/*.vue'
+description: Security guidelines for high-throughput TypeScript applications using DDD, Event Sourcing, and CQRS
 ---
 
 # Security Guidelines
 
-These guidelines are to ensure secure code and systems while addressing OWASP Top 10 vulnerabilities and .NET-specific security best practices.
+## 1. Parse, Don't Validate - Security Foundation
 
-## 1. General C# and .NET Security Best Practices
-- Validate all user input; never trust input from external sources.
-- Use parameterized queries or ORM methods to prevent SQL injection.
-- Avoid dynamic code execution (e.g., `Eval`, `Reflection.Emit`) unless absolutely necessary.
-- Use strong types and enums instead of strings for sensitive logic.
-- Store secrets (API keys, connection strings) in secure configuration (e.g., Azure Key Vault, environment variables).
-- Use `SecureString` or similar for sensitive in-memory data.
-- Prefer `using` statements for disposing sensitive resources.
-- Use HTTPS for all network communication.
-- Keep all dependencies up to date and monitor for vulnerabilities.
+### Secure Types Make Invalid States Impossible
+- **Parse untrusted input** into secure domain types that cannot be constructed with invalid data
+- **Use branded types** to prevent mixing trusted/untrusted data at compile time
 
-## 2. Disruptor .NET Security Guidelines
-- Do not pass untrusted data through the ring buffer without validation and sanitization.
-- Avoid logging sensitive data in event handlers or processors.
-- Ensure event handlers do not leak exceptions or sensitive information.
-- Use access controls to restrict who can enqueue commands/events.
-- Do not expose Disruptor internals over public APIs.
+```typescript
+// Branded security types
+type SecureEmail = string & { readonly __brand: 'SecureEmail' };
+type ValidatedCommand = DomainCommand & { readonly __brand: 'ValidatedCommand' };
 
-## 3. OWASP Top 10 (2021) Mitigations
-- **A01:2021 - Broken Access Control**: Enforce authorization checks on all sensitive operations.
-- **A02:2021 - Cryptographic Failures**: Use .NET cryptography APIs correctly; never roll your own crypto.
-- **A03:2021 - Injection**: Use parameterized queries, avoid string concatenation for commands/queries.
-- **A04:2021 - Insecure Design**: Apply defense-in-depth, validate at every layer, use least privilege.
-- **A05:2021 - Security Misconfiguration**: Harden configuration, disable debug endpoints, use secure headers.
-- **A06:2021 - Vulnerable and Outdated Components**: Regularly update dependencies, use tools like `dotnet list package --vulnerable`.
-- **A07:2021 - Identification and Authentication Failures**: Use ASP.NET Core Identity or similar for authentication; never store passwords in plain text.
-- **A08:2021 - Software and Data Integrity Failures**: Use strong checksums/signatures for critical data; enable code signing.
-- **A09:2021 - Security Logging and Monitoring Failures**: Log security events, monitor logs, and alert on suspicious activity.
-- **A10:2021 - Server-Side Request Forgery (SSRF)**: Validate and whitelist URLs for outbound requests; avoid fetching remote resources based on user input.
+// Parse functions ensure security invariants
+const parseSecureEmail = (input: string): Either<SecurityError, SecureEmail> =>
+  EMAIL_REGEX.test(input.trim()) && input.length <= 254
+    ? right(input.trim() as SecureEmail)
+    : left(new SecurityError('Invalid email'));
 
-## 4. Secure Coding Patterns
-- Use `try-catch` blocks to handle and log exceptions securely.
-- Never expose stack traces or internal errors to end users.
-- Sanitize all output to prevent XSS in web contexts.
-- Use anti-forgery tokens in web forms (ASP.NET Core: `[ValidateAntiForgeryToken]`).
-- Use `HttpOnly` and `Secure` flags for cookies.
-- Avoid hardcoding credentials or secrets in code or config files.
-- Use role-based access control (RBAC) for sensitive operations.
+const parseCommand = (raw: unknown): Either<SecurityError, ValidatedCommand> =>
+  pipe(
+    raw,
+    parseObject,
+    chain(validateSchema(CommandSchema)),
+    chain(sanitizeInputs),
+    map(cmd => cmd as ValidatedCommand)
+  );
+```
 
-## 5. Tooling and Automation
-- Use static analysis tools to catch security issues early.
-- Run dependency vulnerability scans in CI/CD.
-- Use secret scanning tools to detect accidental credential leaks.
-- Enable code reviews for all pull requests, focusing on security-sensitive code.
+## 2. Functional Core Security
 
-## 6. Example: Secure Command Handler
-```csharp
-public class SecureCommandHandler : ICommandHandler<AddContactCommand>
-{
-    public void Handle(AddContactCommand command)
-    {
-        // Validate input
-        // ...secure logic...
+### Pure Security Logic
+- **Keep all security operations pure** - no side effects in validation/authorization
+- **Compose security functions** using functional combinators
+
+```typescript
+// Pure cryptographic operations
+const hashPassword = (password: string, salt: Uint8Array): Promise<Uint8Array> =>
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(password + salt));
+
+// Composable security policies
+const validateSecureCommand = (command: unknown): Either<SecurityError[], ValidatedCommand> =>
+  pipe(
+    command,
+    parseCommand,
+    chain(checkRateLimit),
+    chain(validateCapabilities),
+    chain(sanitizePayload)
+  );
+
+// Event signing for integrity
+const signEvent = async (event: DomainEvent, key: CryptoKey): Promise<SignedEvent> => ({
+  ...event,
+  signature: await crypto.subtle.sign('ECDSA', key, serialize(event)),
+  hash: await computeHash(event)
+});
+```
+
+## 3. Imperative Shell Security
+
+### Isolate Security Side Effects
+- **Push all I/O to application boundaries** - logging, database operations, network calls
+- **Handle security errors** at the shell layer
+
+```typescript
+// Security operations in imperative shell
+class SecureCommandHandler {
+  async execute(rawCommand: unknown, context: SecurityContext): Promise<Either<Error, DomainEvent[]>> {
+    // Pure validation first
+    const validationResult = validateSecureCommand(rawCommand);
+    if (isLeft(validationResult)) {
+      // Side effect: audit logging
+      await this.auditLogger.logFailure('VALIDATION_FAILED', context);
+      return left(new SecurityError('Command validation failed'));
     }
+
+    try {
+      const events = await this.processCommand(validationResult.right);
+      // Side effect: audit logging
+      await this.auditLogger.logSuccess('COMMAND_EXECUTED', context);
+      return right(events);
+    } catch (error) {
+      // Side effect: security event logging
+      await this.auditLogger.logError('COMMAND_FAILED', error, context);
+      return left(error);
+    }
+  }
 }
 ```
 
-## 7. References
-- [OWASP Top 10 (2021)](https://owasp.org/Top10/)
-- [Microsoft Secure Coding Guidelines](https://learn.microsoft.com/en-us/dotnet/standard/security/secure-coding-guidelines)
-- [Disruptor .NET](https://github.com/disruptor-net/Disruptor-net)
-- [Eventuous Documentation](https://eventuous.dev/)
-- [SonarQube Security Rules for C#](https://rules.sonarsource.com/csharp/tag/security/)
+## 4. Authentication & Authorization
 
----
+### Capability-Based Permissions
+- **Encode permissions in types** - compile-time security guarantees
+- **Time-bound all capabilities** - automatic expiration
+
+```typescript
+// Capability types
+interface Capability<T> {
+  readonly resource: T;
+  readonly action: string;
+  readonly expiresAt: Date;
+  readonly constraints: readonly string[];
+}
+
+// Pure authorization
+const authorize = (capability: Capability<Resource>, action: string): Either<AuthError, Capability<Resource>> =>
+  capability.expiresAt > new Date() && capability.action === action
+    ? right(capability)
+    : left(new AuthError('Insufficient permissions'));
+
+// JWT validation pipeline
+const parseJWT = (token: string): Either<AuthError, Capability[]> =>
+  pipe(
+    token,
+    validateStructure,
+    chain(verifySignature),
+    chain(parseClaims),
+    chain(validateExpiry),
+    map(claims => claims.capabilities)
+  );
+```
+
+## 5. Input Sanitization
+
+### Content Security Parsing
+- **Allowlist approach** - only permit known-safe content
+- **Parse then sanitize** - structured validation before cleaning
+
+```typescript
+// Safe content using structured data
+type SafeContent = 
+  | { readonly type: 'text'; readonly value: string }
+  | { readonly type: 'formatted'; readonly elements: readonly SafeElement[] };
+
+const parseSecureContent = (input: string): Either<SecurityError, SafeContent> =>
+  pipe(
+    input,
+    validateLength(1000),
+    chain(parseStructuredContent),
+    orElse(() => right({ type: 'text', value: escapeText(input) }))
+  );
+
+// URL validation with security checks
+const parseSecureURL = (input: string): Either<SecurityError, SecureURL> =>
+  pipe(
+    input.trim(),
+    parseURL,
+    chain(validateProtocol(['https:', 'http:'])),
+    chain(preventSSRF),
+    map(url => url.href as SecureURL)
+  );
+```
+
+## 6. Rate Limiting
+
+### Functional Rate Limiting
+- **Pure rate limit calculations** - testable and predictable
+- **Sliding window implementation** - accurate request tracking
+
+```typescript
+// Pure rate limiting logic
+interface RateWindow {
+  readonly requests: readonly number[];
+  readonly windowMs: number;
+  readonly maxRequests: number;
+}
+
+const checkRateLimit = (window: RateWindow, now: number): Either<RateLimitError, RateWindow> => {
+  const validRequests = window.requests.filter(time => time > now - window.windowMs);
+  
+  return validRequests.length >= window.maxRequests
+    ? left(new RateLimitError('Rate limit exceeded'))
+    : right({ ...window, requests: [...validRequests, now] });
+};
+```
+
+## 7. Error Handling
+
+### Secure Error Types
+- **Never expose internal details** - safe error messages only
+- **Use tagged unions** - exhaustive error handling
+- **Include correlation IDs** - traceability without exposure
+
+```typescript
+// Security error types
+type SecurityError = 
+  | { type: 'AUTH_FAILED'; correlationId: string }
+  | { type: 'RATE_LIMITED'; correlationId: string }
+  | { type: 'VALIDATION_FAILED'; correlationId: string };
+
+// Safe error handling
+const handleSecurityError = (error: SecurityError): DomainEvent => {
+  const baseEvent = { correlationId: error.correlationId, timestamp: new Date() };
+  
+  switch (error.type) {
+    case 'AUTH_FAILED':
+      return new AuthenticationFailed({ ...baseEvent, reason: 'Authentication failed' });
+    case 'RATE_LIMITED':
+      return new RateLimitExceeded(baseEvent);
+    case 'VALIDATION_FAILED':
+      return new ValidationFailed(baseEvent);
+  }
+};
+```
+
+## 8. Best Practices Summary
+
+1. **Parse, Don't Validate** - Use types that make invalid states impossible
+2. **Functional Core** - Keep security logic pure and composable  
+3. **Imperative Shell** - Isolate side effects to application boundaries
+4. **Type Safety** - Encode security invariants in the type system
+5. **Capability-Based** - Fine-grained, time-bounded permissions
+6. **Fail Securely** - Default to denial, never expose internals
+7. **Audit Everything** - Immutable audit trail for compliance
+
+**Foundation**: Security is a domain concern. Apply functional programming and DDD principles to create secure, composable, and testable security logic.
