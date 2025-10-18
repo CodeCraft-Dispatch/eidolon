@@ -256,6 +256,16 @@ describe('Byte Analysis Domain', () => {
             expect(hammingDistance(zero, max)).toBe(8)
         })
 
+        it('should handle type system bypass gracefully', () => {
+            // Test what happens when someone bypasses TypeScript types
+            const invalidByte = 1024; // Has bit set at position 10
+
+            // With masking approach:
+            // 1024 & 0xFF = 0, so should return -1
+            expect(findFirstSetBit(invalidByte as any)).toBe(-1);
+            expect(findLastSetBit(invalidByte as any)).toBe(-1);
+        });
+
         it('should maintain consistency across all analysis functions', () => {
             const testValues = [0, 1, 15, 85, 128, 170, 240, 255]
 

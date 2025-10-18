@@ -1,6 +1,7 @@
 import type { BYTE } from './core'
-import { byteToNumberValue, compareBytes, BITS_PER_BYTE, BYTE_MIN_VALUE, BYTE_MAX_VALUE } from './core'
+import { byteToNumberValue, compareBytes, BITS_PER_BYTE, BYTE_MIN_VALUE, BYTE_MAX_VALUE, BYTE_MASK } from './core'
 import { getBitFromByte } from './bits'
+import { getAllBitPositions, getAllBitPositionsReversed } from '../bit/bit.position';
 
 // Count number of set bits (1s) in a BYTE
 export const countSetBits = (byte: BYTE): number => {
@@ -20,26 +21,18 @@ export const countClearBits = (byte: BYTE): number => BITS_PER_BYTE - countSetBi
 
 // Find position of first set bit (rightmost 1), returns -1 if none
 export const findFirstSetBit = (byte: BYTE): number => {
-    const num = byteToNumberValue(byte);
+    const num = byteToNumberValue(byte) & BYTE_MASK;
     if (num === 0) return -1;
 
-    for (let i = 0; i < BITS_PER_BYTE; i++) {
-        if ((num >> i) & 1) return i;
-    }
-
-    return -1;
+    return getAllBitPositions().find(i => (num >> i) & 1) ?? -1;
 };
 
 // Find position of last set bit (leftmost 1), returns -1 if none
 export const findLastSetBit = (byte: BYTE): number => {
-    const num = byteToNumberValue(byte);
+    const num = byteToNumberValue(byte) & BYTE_MASK;
     if (num === 0) return -1;
 
-    for (let i = BITS_PER_BYTE - 1; i >= 0; i--) {
-        if ((num >> i) & 1) return i;
-    }
-
-    return -1;
+    return getAllBitPositionsReversed().find(i => (num >> i) & 1) ?? -1;
 };
 
 // Find all positions where bits are set (1)

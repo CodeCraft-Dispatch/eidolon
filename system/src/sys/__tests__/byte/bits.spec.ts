@@ -16,183 +16,252 @@ import {
 } from '../../byte/bits'
 
 describe('Bit Manipulation Domain', () => {
-    describe('getBitFromByte operations', () => {
-        it('should get bits from byte correctly', () => {
-            const byte = unsafeByte(170) // 0b10101010
+    // Test data factory
+    const createTestByte = (value: number) => unsafeByte(value)
+    const testCases = [
+        { name: 'alternating pattern', value: 170, binary: '0b10101010' },
+        { name: 'all zeros', value: 0, binary: '0b00000000' },
+        { name: 'all ones', value: 255, binary: '0b11111111' },
+        { name: 'single bit (LSB)', value: 1, binary: '0b00000001' },
+        { name: 'single bit (MSB)', value: 128, binary: '0b10000000' },
+        { name: 'mixed pattern', value: 85, binary: '0b01010101' },
+    ]
 
-            // Test positions 0-7 (LSB to MSB)
-            expect(getBitFromByte(byte, 0)).toBe(0) // LSB
-            expect(getBitFromByte(byte, 1)).toBe(1)
-            expect(getBitFromByte(byte, 2)).toBe(0)
-            expect(getBitFromByte(byte, 3)).toBe(1)
-            expect(getBitFromByte(byte, 4)).toBe(0)
-            expect(getBitFromByte(byte, 5)).toBe(1)
-            expect(getBitFromByte(byte, 6)).toBe(0)
-            expect(getBitFromByte(byte, 7)).toBe(1) // MSB
+    // Helper to test both safe and unsafe variants
+    const testBothVariants = <T extends any[]>(
+        description: string,
+        unsafeFunc: (...args: T) => any,
+        safeFunc: (...args: T) => any,
+        testFn: (func: (...args: T) => any, variant: 'unsafe' | 'safe') => void
+    ) => {
+        describe(description, () => {
+            describe('unsafe variant', () => {
+                testFn(unsafeFunc, 'unsafe')
+            })
+
+            describe('safe variant (At)', () => {
+                testFn(safeFunc, 'safe')
+            })
         })
+    }
 
-        it('should handle edge cases', () => {
-            const allZeros = unsafeByte(0)   // 0b00000000
-            const allOnes = unsafeByte(255)  // 0b11111111
+    testBothVariants(
+        'getBit operations',
+        getBitFromByte,
+        getBitFromByteAt,
+        (getBitFunc, variant) => {
+            it('should get bits correctly for various patterns', () => {
+                testCases.forEach(({ name, value, binary }) => {
+                    const byte = createTestByte(value)
 
-            for (let i = 0; i < 8; i++) {
-                expect(getBitFromByte(allZeros, i)).toBe(0)
-                expect(getBitFromByte(allOnes, i)).toBe(1)
+                    // Test all bit positions
+                    for (let pos = 0; pos < 8; pos++) {
+                        const expected = (value >> pos) & 1
+                        expect(getBitFunc(byte, pos as any)).toBe(expected)
+                    }
+                })
+            })
+
+            it('should handle specific bit patterns correctly', () => {
+                const byte = createTestByte(170) // 0b10101010
+
+                expect(getBitFunc(byte, 0 as any)).toBe(0) // LSB
+                expect(getBitFunc(byte, 1 as any)).toBe(1)
+                expect(getBitFunc(byte, 7 as any)).toBe(1) // MSB
+            })
+
+            if (variant === 'safe') {
+                it('should handle invalid positions gracefully', () => {
+                    const byte = createTestByte(170)
+
+                    // Test boundary conditions - adjust based on actual implementation
+                    expect(getBitFunc(byte, -1 as any)).toBe(0)
+                    expect(getBitFunc(byte, 8 as any)).toBe(0)
+                })
             }
-        })
+        }
+    )
 
-        it('should work with single bit patterns', () => {
-            const bit0 = unsafeByte(1)   // 0b00000001
-            const bit7 = unsafeByte(128) // 0b10000000
+    testBothVariants(
+        'setBit operations',
+        setBitInByte,
+        setBitInByteAt,
+        (setBitFunc, variant) => {
+            it('should set bits to 1 correctly', () => {
+                let byte = createTestByte(0)
 
-            expect(getBitFromByte(bit0, 0)).toBe(1)
-            expect(getBitFromByte(bit0, 7)).toBe(0)
-            expect(getBitFromByte(bit7, 0)).toBe(0)
-            expect(getBitFromByte(bit7, 7)).toBe(1)
-        })
-    })
+                for (let pos = 0; pos < 8; pos++) {
+                    byte = setBitFunc(byte, pos as any, 1 as any)
+                    expect((byte >> pos) & 1).toBe(1)
+                }
+            })
 
-    describe('setBitInByte operations', () => {
-        it('should set individual bits correctly', () => {
-            let byte = unsafeByte(0) // Start with 0b00000000
+            it('should set bits to 0 correctly', () => {
+                let byte = createTestByte(255)
 
-            // Set each bit to 1
-            byte = setBitInByte(byte, 0, 1 as any) // 0b00000001
-            expect(getBitFromByte(byte, 0)).toBe(1)
+                for (let pos = 0; pos < 8; pos++) {
+                    byte = setBitFunc(byte, pos as any, 0 as any)
+                    expect((byte >> pos) & 1).toBe(0)
+                }
+            })
 
-            byte = setBitInByte(byte, 2, 1 as any) // 0b00000101
-            expect(getBitFromByte(byte, 2)).toBe(1)
+            it('should preserve other bits when setting', () => {
+                const original = createTestByte(85) // 0b01010101
+                const modified = setBitFunc(original, 0 as any, 1 as any)
 
-            byte = setBitInByte(byte, 7, 1 as any) // 0b10000101
-            expect(getBitFromByte(byte, 7)).toBe(1)
-        })
+                // Verify only target bit changed (or stayed same)
+                for (let pos = 1; pos < 8; pos++) {
+                    const originalBit = (original >> pos) & 1
+                    const modifiedBit = (modified >> pos) & 1
+                    expect(modifiedBit).toBe(originalBit)
+                }
+            })
+        }
+    )
 
-        it('should clear individual bits correctly', () => {
-            let byte = unsafeByte(255) // Start with 0b11111111
+    testBothVariants(
+        'setBitOn operations',
+        setBitOnInByte,
+        setBitOnInByteAt,
+        (setBitOnFunc, variant) => {
+            it('should turn bits on', () => {
+                testCases.forEach(({ value }) => {
+                    const byte = createTestByte(value)
 
-            // Clear each bit to 0
-            byte = setBitInByte(byte, 0, 0 as any) // 0b11111110
-            expect(getBitFromByte(byte, 0)).toBe(0)
+                    for (let pos = 0; pos < 8; pos++) {
+                        const result = setBitOnFunc(byte, pos as any)
+                        expect((result >> pos) & 1).toBe(1)
+                    }
+                })
+            })
 
-            byte = setBitInByte(byte, 4, 0 as any) // 0b11101110
-            expect(getBitFromByte(byte, 4)).toBe(0)
+            it('should not affect already set bits', () => {
+                const byte = createTestByte(255) // All bits on
 
-            byte = setBitInByte(byte, 7, 0 as any) // 0b01101110
-            expect(getBitFromByte(byte, 7)).toBe(0)
-        })
+                for (let pos = 0; pos < 8; pos++) {
+                    const result = setBitOnFunc(byte, pos as any)
+                    expect(result).toBe(byte)
+                }
+            })
+        }
+    )
 
-        it('should preserve other bits when setting', () => {
-            const original = unsafeByte(85) // 0b01010101
-            const modified = setBitInByte(original, 0, 1 as any) // Bit 0 is already 1, so no change
+    testBothVariants(
+        'setBitOff operations',
+        setBitOffInByte,
+        setBitOffInByteAt,
+        (setBitOffFunc, variant) => {
+            it('should turn bits off', () => {
+                testCases.forEach(({ value }) => {
+                    const byte = createTestByte(value)
 
-            expect(modified).toBe(original)
+                    for (let pos = 0; pos < 8; pos++) {
+                        const result = setBitOffFunc(byte, pos as any)
+                        expect((result >> pos) & 1).toBe(0)
+                    }
+                })
+            })
 
-            const modified2 = setBitInByte(original, 1, 0 as any) // Bit 1 is already 0, so no change  
-            expect(getBitFromByte(modified2, 1)).toBe(0)
-            expect(getBitFromByte(modified2, 3)).toBe(0) // Bit 3 should be 0 in 85 (0b01010101)
-        })
-    })
+            it('should not affect already clear bits', () => {
+                const byte = createTestByte(0) // All bits off
 
-    describe('setBitOn operations', () => {
-        it('should turn bits on', () => {
-            const byte = unsafeByte(0) // 0b00000000
+                for (let pos = 0; pos < 8; pos++) {
+                    const result = setBitOffFunc(byte, pos as any)
+                    expect(result).toBe(byte)
+                }
+            })
+        }
+    )
 
-            const withBit0 = setBitOnInByte(byte, 0) // 0b00000001
-            const withBit3 = setBitOnInByte(withBit0, 3) // 0b00001001
+    testBothVariants(
+        'toggleBit operations',
+        toggleBitInByte,
+        toggleBitInByteAt,
+        (toggleBitFunc, variant) => {
+            it('should toggle bits correctly', () => {
+                testCases.forEach(({ value }) => {
+                    const byte = createTestByte(value)
 
-            expect(getBitFromByte(withBit3, 0)).toBe(1)
-            expect(getBitFromByte(withBit3, 3)).toBe(1)
-            expect(getBitFromByte(withBit3, 1)).toBe(0)
-        })
+                    for (let pos = 0; pos < 8; pos++) {
+                        const originalBit = (byte >> pos) & 1
+                        const toggled = toggleBitFunc(byte, pos as any)
+                        const toggledBit = (toggled >> pos) & 1
 
-        it('should not affect already set bits', () => {
-            const byte = unsafeByte(255) // All bits on
-            const result = setBitOnInByte(byte, 4)
+                        expect(toggledBit).toBe(originalBit === 1 ? 0 : 1)
+                    }
+                })
+            })
 
-            expect(result).toBe(byte) // Should be unchanged
-        })
-    })
+            it('should return to original after double toggle', () => {
+                const byte = createTestByte(123) // Arbitrary test value
 
-    describe('setBitOff operations', () => {
-        it('should turn bits off', () => {
-            const byte = unsafeByte(255) // 0b11111111
+                for (let pos = 0; pos < 8; pos++) {
+                    const doubleToggled = toggleBitFunc(toggleBitFunc(byte, pos as any), pos as any)
+                    expect(doubleToggled).toBe(byte)
+                }
+            })
+        }
+    )
 
-            const withoutBit0 = setBitOffInByte(byte, 0) // 0b11111110
-            const withoutBit7 = setBitOffInByte(withoutBit0, 7) // 0b01111110
+    testBothVariants(
+        'isBitSet operations',
+        isBitSetInByte,
+        isBitSetInByteAt,
+        (isBitSetFunc, variant) => {
+            it('should correctly identify set bits', () => {
+                testCases.forEach(({ name, value }) => {
+                    const byte = createTestByte(value)
 
-            expect(getBitFromByte(withoutBit7, 0)).toBe(0)
-            expect(getBitFromByte(withoutBit7, 7)).toBe(0)
-            expect(getBitFromByte(withoutBit7, 1)).toBe(1)
-        })
+                    for (let pos = 0; pos < 8; pos++) {
+                        const expected = ((value >> pos) & 1) === 1
+                        expect(isBitSetFunc(byte, pos as any)).toBe(expected)
+                    }
+                })
+            })
 
-        it('should not affect already clear bits', () => {
-            const byte = unsafeByte(0) // All bits off
-            const result = setBitOffInByte(byte, 4)
+            it('should handle specific patterns correctly', () => {
+                const alternating = createTestByte(170) // 0b10101010
 
-            expect(result).toBe(byte) // Should be unchanged
-        })
-    })
+                expect(isBitSetFunc(alternating, 0 as any)).toBe(false)
+                expect(isBitSetFunc(alternating, 1 as any)).toBe(true)
+                expect(isBitSetFunc(alternating, 7 as any)).toBe(true)
+            })
+        }
+    )
 
-    describe('toggleBit operations', () => {
-        it('should toggle bits correctly', () => {
-            const byte = unsafeByte(85) // 0b01010101
+    describe('cross-function consistency', () => {
+        it('should maintain consistency between get/set operations', () => {
+            const byte = createTestByte(123)
 
-            const toggled0 = toggleBitInByte(byte, 0) // Should flip 1->0: 0b01010100
-            const toggled1 = toggleBitInByte(byte, 1) // Should flip 0->1: 0b01010111
-
-            expect(getBitFromByte(toggled0, 0)).toBe(0)
-            expect(getBitFromByte(toggled1, 1)).toBe(1)
-
-            // Double toggle should return original
-            const doubleToggle = toggleBitInByte(toggleBitInByte(byte, 3), 3)
-            expect(doubleToggle).toBe(byte)
-        })
-
-        it('should handle all positions', () => {
-            const byte = unsafeByte(0) // 0b00000000
-
-            for (let i = 0; i < 8; i++) {
-                const toggled = toggleBitInByte(byte, i)
-                expect(getBitFromByte(toggled, i)).toBe(1)
-
-                // Toggle back
-                const backToOriginal = toggleBitInByte(toggled, i)
-                expect(backToOriginal).toBe(byte)
-            }
-        })
-    })
-
-    describe('isBitSet operations', () => {
-        it('should correctly identify set bits', () => {
-            const byte = unsafeByte(170) // 0b10101010
-
-            expect(isBitSetInByte(byte, 0)).toBe(false) // 0
-            expect(isBitSetInByte(byte, 1)).toBe(true)  // 1
-            expect(isBitSetInByte(byte, 2)).toBe(false) // 0
-            expect(isBitSetInByte(byte, 3)).toBe(true)  // 1
-            expect(isBitSetInByte(byte, 7)).toBe(true)  // 1 (MSB)
-        })
-
-        it('should handle edge cases', () => {
-            const allZeros = unsafeByte(0)
-            const allOnes = unsafeByte(255)
-
-            for (let i = 0; i < 8; i++) {
-                expect(isBitSetInByte(allZeros, i)).toBe(false)
-                expect(isBitSetInByte(allOnes, i)).toBe(true)
-            }
-        })
-    })
-
-    describe('consistency between safe and unsafe variants', () => {
-        it('should produce same results for valid positions', () => {
-            const byte = unsafeByte(123) // Random test value
-
-            // Note: Safe variants would use BitPosition type, but we're testing the unsafe ones
             for (let pos = 0; pos < 8; pos++) {
-                expect(getBitFromByte(byte, pos)).toBe(getBitFromByte(byte, pos))
-                expect(setBitInByte(byte, pos, 1 as any)).toBe(setBitInByte(byte, pos, 1 as any))
-                expect(toggleBitInByte(byte, pos)).toBe(toggleBitInByte(byte, pos))
+                // Test unsafe variants
+                const withBitSet = setBitInByte(byte, pos, 1 as any)
+                const withBitClear = setBitInByte(byte, pos, 0 as any)
+
+                expect(getBitFromByte(withBitSet, pos)).toBe(1)
+                expect(getBitFromByte(withBitClear, pos)).toBe(0)
+                expect(isBitSetInByte(withBitSet, pos)).toBe(true)
+                expect(isBitSetInByte(withBitClear, pos)).toBe(false)
+
+                // Test safe variants
+                expect(getBitFromByteAt(withBitSet, pos as any)).toBe(1)
+                expect(getBitFromByteAt(withBitClear, pos as any)).toBe(0)
+                expect(isBitSetInByteAt(withBitSet, pos as any)).toBe(true)
+                expect(isBitSetInByteAt(withBitClear, pos as any)).toBe(false)
+            }
+        })
+
+        it('should maintain consistency between toggle and set operations', () => {
+            const byte = createTestByte(85) // 0b01010101
+
+            for (let pos = 0; pos < 8; pos++) {
+                const originalBit = getBitFromByte(byte, pos)
+                const toggled = toggleBitInByte(byte, pos)
+                const toggledAt = toggleBitInByteAt(byte, pos as any)
+                const manuallySet = setBitInByte(byte, pos, (originalBit === 1 ? 0 : 1) as any)
+
+                expect(toggled).toBe(manuallySet)
+                expect(toggledAt).toBe(manuallySet)
             }
         })
     })

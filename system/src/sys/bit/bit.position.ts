@@ -86,6 +86,17 @@ export const getAllBitPositions = (): BitPosition[] => [
     BIT_POSITION_7
 ];
 
+export const getAllBitPositionsReversed = (): BitPosition[] => [
+    BIT_POSITION_7,
+    BIT_POSITION_6,
+    BIT_POSITION_5,
+    BIT_POSITION_4,
+    BIT_POSITION_3,
+    BIT_POSITION_2,
+    BIT_POSITION_1,
+    BIT_POSITION_0
+];
+
 export const isValidBitPositionRange = (start: BitPosition, end: BitPosition): boolean =>
     start >= MIN_BIT_POSITION && end <= MAX_BIT_POSITION && start <= end;
 
