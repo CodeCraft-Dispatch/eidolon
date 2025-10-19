@@ -2,7 +2,7 @@ import {
     type Result,
     type ResultError,
     type ResultSuccess
-} from '@/sys/result'
+} from '../result/core'
 
 // Branded type for compile-time safety
 declare const __bitPositionBrand: unique symbol;

@@ -2,7 +2,7 @@ import type {
     Result,
     ResultSuccess,
     ResultError,
-} from '../result'
+} from '../result/core'
 
 
 // Core BYTE type

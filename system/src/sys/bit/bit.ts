@@ -2,7 +2,7 @@ import {
     type Result,
     type ResultError,
     type ResultSuccess
-} from '@/sys/result'
+} from '../result/core'
 
 // Internal Values
 const ON = 1;

@@ -1,4 +1,3 @@
-import type { Result, ResultSuccess, ResultError } from '../result'
 import type { BYTE } from './core'
 import { MAX_BIT_POSITION } from '../bit/bit.position'
 import {
@@ -7,6 +6,7 @@ import {
     BYTE_MASK,
     BYTE_MIN_VALUE
 } from './core'
+import type { Result, ResultError, ResultSuccess } from '../result/core';
 
 // Internal helper for shift operations validation
 const isValidShiftPositions = (positions: number): boolean =>

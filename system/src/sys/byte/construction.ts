@@ -1,5 +1,5 @@
-import type { Result, ResultSuccess, ResultError } from '../result'
 import type { BIT } from '../bit/bit'
+import type { Result, ResultError, ResultSuccess } from '../result/core';
 import type { BYTE } from './core'
 import {
     parseByte,
