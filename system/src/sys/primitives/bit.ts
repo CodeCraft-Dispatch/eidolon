@@ -2,7 +2,7 @@ import {
     type Result,
     type ResultError,
     type ResultSuccess
-} from '../result/core'
+} from '@/sys/result/core'
 
 // Internal Values
 export const ON: BIT = 1 as BIT;

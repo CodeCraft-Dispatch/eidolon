@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { bitToBoolean, booleanToBit, toggleBit, andBits, orBits, xorBits, notBit } from '../../../primitives/bit';
-import type { BIT } from '../../../primitives/bit';
+import { bitToBoolean, booleanToBit, toggleBit, andBits, orBits, xorBits, notBit } from '@/sys/primitives/bit';
+import type { BIT } from '@/sys/primitives/bit';
 
 describe('Utility Functions for Common Operations', () => {
     describe('bitToBoolean', () => {

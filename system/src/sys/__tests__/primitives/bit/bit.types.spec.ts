@@ -3,11 +3,11 @@ import {
     type BIT,
     type BIT_ON,
     type BIT_OFF
-} from '../../../primitives/bit';
+} from '@/sys/primitives/bit';
 import {
     OFF,
     ON
-} from '../../../primitives/bit';
+} from '@/sys/primitives/bit';
 
 describe('BIT Types', () => {
     describe('BIT_ON type', () => {

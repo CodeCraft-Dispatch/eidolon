@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Result } from '../../../result/core';
-import { parseBitOn, parseBitOff, parseBit, OFF, ON } from '../../../primitives/bit';
+import type { Result } from '@/sys/result/core';
+import { parseBitOn, parseBitOff, parseBit, OFF, ON } from '@/sys/primitives/bit';
 
 describe('Parsing Functions', () => {
     const assertResult = <T>(

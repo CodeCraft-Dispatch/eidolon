@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isBitOn, isBitOff, isBit } from '../../../primitives/bit';
+import { isBitOn, isBitOff, isBit } from '@/sys/primitives/bit';
 
 describe('BIT Validations', () => {
     describe('isBitOn', () => {

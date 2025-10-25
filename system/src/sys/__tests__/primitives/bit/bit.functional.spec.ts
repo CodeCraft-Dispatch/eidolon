@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { foldBit, createBit } from '../../../primitives/bit';
-import { success, failure } from '../../../result/core';
+import { foldBit, createBit } from '@/sys/primitives/bit';
+import { success, failure } from '@/sys/result/core';
 
 describe('Functional Composition Helpers', () => {
     describe('foldBit', () => {
