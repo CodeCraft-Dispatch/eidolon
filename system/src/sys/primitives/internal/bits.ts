@@ -47,8 +47,9 @@ export const setBitInBigIntAt = <
     position: TBitPosition,
     bit: BIT
 ): T => {
-    const mask = ~(BigInt(1) << BigInt(position));
-    return ((value & mask) | (BigInt(bit) << BigInt(position))) as T;
+    const mask = BigInt(1) << BigInt(position);
+    const result = bit === 1 ? (value | mask) : (value & ~mask);
+    return (result & BigInt("0xFFFFFFFFFFFFFFFF")) as T;
 };
 
 export const setBitOnInNumberAt = <

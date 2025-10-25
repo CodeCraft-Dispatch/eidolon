@@ -3,7 +3,7 @@ import { success, failure } from "@/sys/result/core";
 import type { TypeConfig } from './types';
 import type { ComparisonResult } from './comparison.methods';
 import { compareBigValues, compareValues, } from './comparison.methods';
-import { clampBigValue, clampValue } from './clamp.methods';
+import { clampValue } from './clamp.methods';
 import { isInBigRange, isInURange, isInSRange } from './inrange.methods';
 
 // exports
@@ -35,8 +35,8 @@ export const HEX_PATTERN = /^[0-9a-fA-F]{1,2}$/;
  * @returns The clamped and masked bigint value.
  */
 export const clampToBigType = <T extends bigint>(value: bigint, config: TypeConfig<T>): T => {
-    const clamped = clampBigValue(value, config.MIN, config.MAX);
-    return (clamped & (config.MASK as bigint)) as T;
+    const clamped = clampValue(value, config.MIN, config.MAX);
+    return clamped as T;
 };
 /**
  * Clamps a number value to the specified range and applies a mask.
@@ -113,7 +113,7 @@ export const parseBigType = <T extends bigint>(value: bigint, config: TypeConfig
     if (isBigType(value, config)) {
         return success((value & (config.MASK as bigint)) as T);
     }
-    return failure(`Value must be an big integer in range [${config.MIN}, ${config.MAX}], received: ${value}`);
+    return failure(`Value must be a bigint in range [${config.MIN}, ${config.MAX}], received: ${value}`);
 };
 /**
  * Parses a number value and ensures it is within the specified unsigned range, applying a mask if valid.
