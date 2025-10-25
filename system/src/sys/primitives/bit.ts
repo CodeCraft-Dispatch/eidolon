@@ -5,14 +5,12 @@ import {
 } from '../result/core'
 
 // Internal Values
-const ON = 1;
-const OFF = 0;
+export const ON: BIT = 1 as BIT;
+export const OFF: BIT = 0 as BIT;
 
 // Types
-declare const __bitOnBrand: unique symbol;
-export type BIT_ON = 1 & { readonly [__bitOnBrand]: true };
-declare const __bitOffBrand: unique symbol;
-export type BIT_OFF = 0 & { readonly [__bitOffBrand]: true };
+export type BIT_ON = 1;
+export type BIT_OFF = 0;
 declare const __bitBrand: unique symbol;
 export type BIT = (BIT_ON | BIT_OFF) & { readonly [__bitBrand]: true };
 
@@ -55,8 +53,6 @@ export const createBit = (value: unknown): Result<BIT> =>
 export const bitToBoolean = (bit: BIT): boolean => !!(bit & 1);
 export const booleanToBit = (bool: boolean): BIT => (bool ? 1 : 0) as BIT;
 export const toggleBit = (bit: BIT): BIT => (bit ^ 1) as BIT;
-export const setBitOn = (): BIT => 1 as BIT;
-export const setBitOff = (): BIT => 0 as BIT;
 export const andBits = (bit1: BIT, bit2: BIT): BIT => (bit1 & bit2) as BIT;
 export const orBits = (bit1: BIT, bit2: BIT): BIT => (bit1 | bit2) as BIT;
 export const xorBits = (bit1: BIT, bit2: BIT): BIT => (bit1 ^ bit2) as BIT;
