@@ -28,7 +28,7 @@ export type BitPosition<TMax extends UnsignedPrimitiveBase<number> = number> = B
  *
  * @template T - The primitive base type.
  */
-export interface TypeConfig<T extends PrimitiveBase> {
+export interface TypeConfig<T extends PrimitiveBase, TIncludeSignMask extends boolean = false> {
     /**
      * The minimum value for the type.
      */
@@ -43,4 +43,19 @@ export interface TypeConfig<T extends PrimitiveBase> {
      * The mask value for the type.
      */
     readonly MASK: T;
+
+    /**
+     * The number of bits used to represent the type.
+     */
+    readonly BITS: T;
+
+    /**
+     * The sign mask value - only present when TIncludeSignMask is true.
+     */
+    readonly SIGNMASK?: TIncludeSignMask extends true ? T : never;
+
+    /**
+     * Additional properties can be added as needed. 
+     */
+    [key: string]: unknown;
 }

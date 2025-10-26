@@ -16,7 +16,8 @@ export type ULongBitPosition = BitPosition<63>;
 const ULONG_CONFIG: TypeConfig<ULONG> = {
     MIN: 0n as ULONG,
     MAX: 18446744073709551615n as ULONG,
-    MASK: 0xFFFFFFFFFFFFFFFFn as ULONG
+    MASK: 0xFFFFFFFFFFFFFFFFn as ULONG,
+    BITS: 64n as ULONG
 };
 
 const bigintToULong = (num: bigint): ULONG => (num & ULONG_MASK) as ULONG;

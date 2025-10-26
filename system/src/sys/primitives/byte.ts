@@ -16,7 +16,8 @@ export type ByteBitPosition = BitPosition<7>;
 const BYTE_CONFIG: TypeConfig<BYTE> = {
     MIN: 0 as BYTE,
     MAX: 255 as BYTE,
-    MASK: 0xFF as BYTE
+    MASK: 0xFF as BYTE,
+    BITS: 8 as BYTE
 };
 
 const numberToByte = (num: number): BYTE => (num & BYTE_MASK) as BYTE;
@@ -39,12 +40,12 @@ export const compareBytes = (a: BYTE, b: BYTE): ComparisonResult => compareType(
 export const getBitFromByteAt = (value: BYTE, position: ByteBitPosition): BIT =>
     getBitAtNumber<BYTE, 7, ByteBitPosition>(value, position);
 export const setBitInByteAt = (value: BYTE, position: ByteBitPosition, bit: BIT): BYTE =>
-    setBitInNumberAt<BYTE, 7, ByteBitPosition>(value, position, bit);
+    setBitInNumberAt<BYTE, 7, ByteBitPosition>(value, position, bit, BYTE_CONFIG);
 export const setBitOnInByteAt = (value: BYTE, position: ByteBitPosition): BYTE =>
-    setBitOnInNumberAt<BYTE, 7, ByteBitPosition>(value, position);
+    setBitOnInNumberAt<BYTE, 7, ByteBitPosition>(value, position, BYTE_CONFIG);
 export const setBitOffInByteAt = (value: BYTE, position: ByteBitPosition): BYTE =>
-    setBitOffInNumberAt<BYTE, 7, ByteBitPosition>(value, position);
+    setBitOffInNumberAt<BYTE, 7, ByteBitPosition>(value, position, BYTE_CONFIG);
 export const toggleBitInByteAt = (value: BYTE, position: ByteBitPosition): BYTE =>
-    toggleBitInNumberAt<BYTE, 7, ByteBitPosition>(value, position);
+    toggleBitInNumberAt<BYTE, 7, ByteBitPosition>(value, position, BYTE_CONFIG);
 export const isBitSetInByteAt = (value: BYTE, position: ByteBitPosition): boolean =>
     isBitSetInNumberAt<BYTE, 7, ByteBitPosition>(value, position);

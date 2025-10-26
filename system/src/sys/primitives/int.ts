@@ -13,10 +13,12 @@ declare const __intBrand: unique symbol;
 export type INT = number & { readonly [__intBrand]: true };
 export type IntBitPosition = BitPosition<31>;
 
-const INT_CONFIG: TypeConfig<INT> = {
+const INT_CONFIG: TypeConfig<INT, true> = {
     MIN: -2147483648 as INT,
     MAX: 2147483647 as INT,
-    MASK: 0xFFFFFFFF as INT
+    MASK: 0xFFFFFFFF as INT,
+    BITS: 32 as INT,
+    SIGNMASK: 0x80000000 as INT
 };
 
 const numberToInt = (num: number): INT => (num | 0) as INT;
@@ -39,12 +41,12 @@ export const compareInts = (a: INT, b: INT): ComparisonResult => compareType(a, 
 export const getBitFromIntAt = (value: INT, position: IntBitPosition): BIT =>
     getBitAtNumber<INT, 31, IntBitPosition>(value, position);
 export const setBitInIntAt = (value: INT, position: IntBitPosition, bit: BIT): INT =>
-    setBitInNumberAt<INT, 31, IntBitPosition>(value, position, bit);
+    setBitInNumberAt<INT, 31, IntBitPosition, true>(value, position, bit, INT_CONFIG);
 export const setBitOnInIntAt = (value: INT, position: IntBitPosition): INT =>
-    setBitOnInNumberAt<INT, 31, IntBitPosition>(value, position);
+    setBitOnInNumberAt<INT, 31, IntBitPosition, true>(value, position, INT_CONFIG);
 export const setBitOffInIntAt = (value: INT, position: IntBitPosition): INT =>
-    setBitOffInNumberAt<INT, 31, IntBitPosition>(value, position);
+    setBitOffInNumberAt<INT, 31, IntBitPosition, true>(value, position, INT_CONFIG);
 export const toggleBitInIntAt = (value: INT, position: IntBitPosition): INT =>
-    toggleBitInNumberAt<INT, 31, IntBitPosition>(value, position);
+    toggleBitInNumberAt<INT, 31, IntBitPosition, true>(value, position, INT_CONFIG);
 export const isBitSetInIntAt = (value: INT, position: IntBitPosition): boolean =>
     isBitSetInNumberAt<INT, 31, IntBitPosition>(value, position);

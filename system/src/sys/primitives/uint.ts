@@ -16,7 +16,8 @@ export type UIntBitPosition = BitPosition<31>;
 const UINT_CONFIG: TypeConfig<UINT> = {
     MIN: 0 as UINT,
     MAX: 4294967295 as UINT,
-    MASK: 0xFFFFFFFF as UINT
+    MASK: 0xFFFFFFFF as UINT,
+    BITS: 32 as UINT
 };
 
 const numberToUInt = (num: number): UINT => (num >>> 0) as UINT;
@@ -39,12 +40,12 @@ export const compareUInts = (a: UINT, b: UINT): ComparisonResult => compareType(
 export const getBitFromUIntAt = (value: UINT, position: UIntBitPosition): BIT =>
     getBitAtNumber<UINT, 31, UIntBitPosition>(value, position);
 export const setBitInUIntAt = (value: UINT, position: UIntBitPosition, bit: BIT): UINT =>
-    setBitInNumberAt<UINT, 31, UIntBitPosition>(value, position, bit);
+    setBitInNumberAt<UINT, 31, UIntBitPosition>(value, position, bit, UINT_CONFIG);
 export const setBitOnInUIntAt = (value: UINT, position: UIntBitPosition): UINT =>
-    setBitOnInNumberAt<UINT, 31, UIntBitPosition>(value, position);
+    setBitOnInNumberAt<UINT, 31, UIntBitPosition>(value, position, UINT_CONFIG);
 export const setBitOffInUIntAt = (value: UINT, position: UIntBitPosition): UINT =>
-    setBitOffInNumberAt<UINT, 31, UIntBitPosition>(value, position);
+    setBitOffInNumberAt<UINT, 31, UIntBitPosition>(value, position, UINT_CONFIG);
 export const toggleBitInUIntAt = (value: UINT, position: UIntBitPosition): UINT =>
-    toggleBitInNumberAt<UINT, 31, UIntBitPosition>(value, position);
+    toggleBitInNumberAt<UINT, 31, UIntBitPosition>(value, position, UINT_CONFIG);
 export const isBitSetInUIntAt = (value: UINT, position: UIntBitPosition): boolean =>
     isBitSetInNumberAt<UINT, 31, UIntBitPosition>(value, position);

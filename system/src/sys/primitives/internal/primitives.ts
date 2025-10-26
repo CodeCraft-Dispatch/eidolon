@@ -34,7 +34,7 @@ export const HEX_PATTERN = /^[0-9a-fA-F]{1,2}$/;
  * @param config - The configuration specifying the range and mask.
  * @returns The clamped and masked bigint value.
  */
-export const clampToBigType = <T extends bigint>(value: bigint, config: TypeConfig<T>): T => {
+export const clampToBigType = <T extends bigint, Signed extends boolean = false>(value: bigint, config: TypeConfig<T, Signed>): T => {
     const clamped = clampValue(value, config.MIN, config.MAX);
     return clamped as T;
 };
@@ -46,7 +46,7 @@ export const clampToBigType = <T extends bigint>(value: bigint, config: TypeConf
  * @param config - The configuration specifying the range and mask.
  * @returns The clamped and masked number value.
  */
-export const clampToType = <T extends number>(value: number, config: TypeConfig<T>): T => {
+export const clampToType = <T extends number, Signed extends boolean = false>(value: number, config: TypeConfig<T, Signed>): T => {
     const clamped = clampValue(value, config.MIN, config.MAX);
     return clamped as T;
 };
@@ -78,7 +78,7 @@ export const compareType = <T extends number>(a: T, b: T): ComparisonResult => c
  * @param config - The configuration specifying the range.
  * @returns `true` if the value is within the range; otherwise, `false`.
  */
-export const isBigType = <T extends bigint>(value: bigint, config: TypeConfig<T>): value is T =>
+export const isBigType = <T extends bigint, Signed extends boolean = false>(value: bigint, config: TypeConfig<T, Signed>): value is T =>
     isInBigRange(value, config.MIN, config.MAX);
 /**
  * Determines if a number value is within the specified unsigned range.
@@ -98,7 +98,7 @@ export const isUType = <T extends number>(value: number, config: TypeConfig<T>):
  * @param config - The configuration specifying the range.
  * @returns `true` if the value is within the range; otherwise, `false`.
  */
-export const isSType = <T extends number>(value: number, config: TypeConfig<T>): value is T =>
+export const isSType = <T extends number, Signed extends boolean = false>(value: number, config: TypeConfig<T, Signed>): value is T =>
     isInSRange(value, config.MIN, config.MAX);
 
 /**
@@ -109,7 +109,7 @@ export const isSType = <T extends number>(value: number, config: TypeConfig<T>):
  * @param config - The configuration specifying the range and mask.
  * @returns A `Result` containing the parsed value if valid, or an error message if invalid.
  */
-export const parseBigType = <T extends bigint>(value: bigint, config: TypeConfig<T>): Result<T> => {
+export const parseBigType = <T extends bigint, Signed extends boolean = false>(value: bigint, config: TypeConfig<T, Signed>): Result<T> => {
     if (isBigType(value, config)) {
         return success((value & (config.MASK as bigint)) as T);
     }
@@ -137,7 +137,7 @@ export const parseUType = <T extends number>(value: number, config: TypeConfig<T
  * @param config - The configuration specifying the range and mask.
  * @returns A `Result` containing the parsed value if valid, or an error message if invalid.
  */
-export const parseSType = <T extends number>(value: number, config: TypeConfig<T>): Result<T> => {
+export const parseSType = <T extends number, Signed extends boolean = false>(value: number, config: TypeConfig<T, Signed>): Result<T> => {
     if (isSType(value, config)) {
         return success((value & config.MASK) as T);
     }

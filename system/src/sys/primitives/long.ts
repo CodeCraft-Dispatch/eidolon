@@ -13,10 +13,12 @@ declare const __longBrand: unique symbol;
 export type LONG = bigint & { readonly [__longBrand]: true };
 export type LongBitPosition = BitPosition<63>;
 
-const LONG_CONFIG: TypeConfig<LONG> = {
+const LONG_CONFIG: TypeConfig<LONG, true> = {
     MIN: -9223372036854775808n as LONG,
     MAX: 9223372036854775807n as LONG,
-    MASK: 0xFFFFFFFFFFFFFFFFn as LONG
+    MASK: 0xFFFFFFFFFFFFFFFFn as LONG,
+    BITS: 64n as LONG,
+    SIGNMASK: 0x8000000000000000n as LONG
 };
 
 const bigintToLong = (num: bigint): LONG => {

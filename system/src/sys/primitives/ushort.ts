@@ -16,7 +16,8 @@ export type UShortBitPosition = BitPosition<15>;
 const USHORT_CONFIG: TypeConfig<USHORT> = {
     MIN: 0 as USHORT,
     MAX: 65535 as USHORT,
-    MASK: 0xFFFF as USHORT
+    MASK: 0xFFFF as USHORT,
+    BITS: 16 as USHORT
 };
 
 const numberToUShort = (num: number): USHORT => (num & USHORT_MASK) as USHORT;
@@ -39,12 +40,12 @@ export const compareUShorts = (a: USHORT, b: USHORT): ComparisonResult => compar
 export const getBitFromUShortAt = (value: USHORT, position: UShortBitPosition): BIT =>
     getBitAtNumber<USHORT, 15, UShortBitPosition>(value, position);
 export const setBitInUShortAt = (value: USHORT, position: UShortBitPosition, bit: BIT): USHORT =>
-    setBitInNumberAt<USHORT, 15, UShortBitPosition>(value, position, bit);
+    setBitInNumberAt<USHORT, 15, UShortBitPosition>(value, position, bit, USHORT_CONFIG);
 export const setBitOnInUShortAt = (value: USHORT, position: UShortBitPosition): USHORT =>
-    setBitOnInNumberAt<USHORT, 15, UShortBitPosition>(value, position);
+    setBitOnInNumberAt<USHORT, 15, UShortBitPosition>(value, position, USHORT_CONFIG);
 export const setBitOffInUShortAt = (value: USHORT, position: UShortBitPosition): USHORT =>
-    setBitOffInNumberAt<USHORT, 15, UShortBitPosition>(value, position);
+    setBitOffInNumberAt<USHORT, 15, UShortBitPosition>(value, position, USHORT_CONFIG);
 export const toggleBitInUShortAt = (value: USHORT, position: UShortBitPosition): USHORT =>
-    toggleBitInNumberAt<USHORT, 15, UShortBitPosition>(value, position);
+    toggleBitInNumberAt<USHORT, 15, UShortBitPosition>(value, position, USHORT_CONFIG);
 export const isBitSetInUShortAt = (value: USHORT, position: UShortBitPosition): boolean =>
     isBitSetInNumberAt<USHORT, 15, UShortBitPosition>(value, position);

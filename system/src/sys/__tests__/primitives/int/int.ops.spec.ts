@@ -38,7 +38,7 @@ describe('INT Bit Manipulation Methods', () => {
 
         cases.forEach(({ value, position, bit, expected, description }) => {
             it(description, () => {
-                expect(setBitInIntAt(value, position, bit)).toBe(expected);
+                expect(setBitInIntAt(value, position, bit)).toBe(expected | 0);
             });
         });
     });
@@ -52,7 +52,7 @@ describe('INT Bit Manipulation Methods', () => {
 
         cases.forEach(({ value, position, expected, description }) => {
             it(description, () => {
-                expect(setBitOnInIntAt(value, position)).toBe(expected);
+                expect(setBitOnInIntAt(value, position)).toBe(expected | 0);
             });
         });
     });
@@ -66,7 +66,7 @@ describe('INT Bit Manipulation Methods', () => {
 
         cases.forEach(({ value, position, expected, description }) => {
             it(description, () => {
-                expect(setBitOffInIntAt(value, position)).toBe(expected);
+                expect(setBitOffInIntAt(value, position)).toBe(expected | 0);
             });
         });
     });
@@ -81,7 +81,7 @@ describe('INT Bit Manipulation Methods', () => {
 
         cases.forEach(({ value, position, expected, description }) => {
             it(description, () => {
-                expect(toggleBitInIntAt(value, position)).toBe(expected);
+                expect(toggleBitInIntAt(value, position)).toBe(expected | 0);
             });
         });
     });

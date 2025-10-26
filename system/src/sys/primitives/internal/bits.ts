@@ -1,5 +1,5 @@
 import type { BIT } from '@/sys/primitives/bit'
-import type { BitPosition, UnsignedPrimitiveBase } from './primitives'
+import type { BitPosition, TypeConfig, UnsignedPrimitiveBase } from './primitives'
 
 export const getBitAtNumber = <
     T extends number,
@@ -27,15 +27,30 @@ export const getBitAtBigInt = <
 export const setBitInNumberAt = <
     T extends number,
     TMax extends UnsignedPrimitiveBase<number>,
-    TBitPosition extends BitPosition<TMax>
+    TBitPosition extends BitPosition<TMax>,
+    Signed extends boolean = false
 >(
     value: T,
     position: TBitPosition,
-    bit: BIT
+    bit: BIT,
+    config: TypeConfig<T, Signed>
 ): T => {
-    const maskedValue = value & 0xFFFFFFFF; // Ensure value is treated as unsigned
-    const mask = ~(1 << position);
-    return ((maskedValue & mask) | (bit << position)) >>> 0 as T; // Force unsigned interpretation
+    const mask = 1 << position;
+    const result = bit === 1 ? (value | mask) : (value & ~mask);
+    const constrained = result & config.MASK;
+    if (config.BITS === 32) {
+        if (config.SIGNMASK !== undefined && (constrained & config.SIGNMASK)) {
+            return (constrained | 0) as T;
+        } else {
+            return (constrained >>> 0) as T;
+        }
+    }
+
+    if (config.SIGNMASK !== undefined && (constrained & config.SIGNMASK)) {
+        return (constrained - (config.MASK + 1)) as T;
+    }
+
+    return constrained as T;
 };
 
 export const setBitInBigIntAt = <
@@ -55,11 +70,13 @@ export const setBitInBigIntAt = <
 export const setBitOnInNumberAt = <
     T extends number,
     TMax extends UnsignedPrimitiveBase<number>,
-    TBitPosition extends BitPosition<TMax>
+    TBitPosition extends BitPosition<TMax>,
+    Signed extends boolean = false
 >(
     value: T,
-    position: TBitPosition
-): T => setBitInNumberAt<T, TMax, TBitPosition>(value, position, 1 as BIT);
+    position: TBitPosition,
+    config: TypeConfig<T, Signed>
+): T => setBitInNumberAt<T, TMax, TBitPosition, Signed>(value, position, 1 as BIT, config);
 
 export const setBitOnInBigIntAt = <
     T extends bigint,
@@ -73,11 +90,13 @@ export const setBitOnInBigIntAt = <
 export const setBitOffInNumberAt = <
     T extends number,
     TMax extends UnsignedPrimitiveBase<number>,
-    TBitPosition extends BitPosition<TMax>
+    TBitPosition extends BitPosition<TMax>,
+    Signed extends boolean = false
 >(
     value: T,
-    position: TBitPosition
-): T => setBitInNumberAt<T, TMax, TBitPosition>(value, position, 0 as BIT);
+    position: TBitPosition,
+    config: TypeConfig<T, Signed>
+): T => setBitInNumberAt<T, TMax, TBitPosition, Signed>(value, position, 0 as BIT, config);
 
 export const setBitOffInBigIntAt = <
     T extends bigint,
@@ -92,14 +111,16 @@ export const setBitOffInBigIntAt = <
 export const toggleBitInNumberAt = <
     T extends number,
     TMax extends UnsignedPrimitiveBase<number>,
-    TBitPosition extends BitPosition<TMax>
+    TBitPosition extends BitPosition<TMax>,
+    Signed extends boolean = false
 >(
     value: T,
-    position: TBitPosition
+    position: TBitPosition,
+    config: TypeConfig<T, Signed>
 ): T => {
     const current = getBitAtNumber<T, TMax, TBitPosition>(value, position);
     const toggled = (current === 0 ? 1 : 0) as BIT;
-    return setBitInNumberAt<T, TMax, TBitPosition>(value, position, toggled);
+    return setBitInNumberAt<T, TMax, TBitPosition, Signed>(value, position, toggled, config);
 };
 
 export const toggleBitInBigIntAt = <
