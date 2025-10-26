@@ -48,7 +48,7 @@ export const clampToBigType = <T extends bigint>(value: bigint, config: TypeConf
  */
 export const clampToType = <T extends number>(value: number, config: TypeConfig<T>): T => {
     const clamped = clampValue(value, config.MIN, config.MAX);
-    return (clamped & config.MASK) as T;
+    return clamped as T;
 };
 
 /**
@@ -125,7 +125,7 @@ export const parseBigType = <T extends bigint>(value: bigint, config: TypeConfig
  */
 export const parseUType = <T extends number>(value: number, config: TypeConfig<T>): Result<T> => {
     if (isUType(value, config)) {
-        return success((value & config.MASK) as T);
+        return success(value as T);
     }
     return failure(`Value must be an unsigned integer in range [${config.MIN}, ${config.MAX}], received: ${value}`);
 };
